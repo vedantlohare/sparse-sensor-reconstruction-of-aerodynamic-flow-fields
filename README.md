@@ -34,8 +34,12 @@ Or use pip:
 pip install -r requirements.txt
 ```
 
-### 2. Generate Data and Run Full Experiments
-To automatically generate the synthetic dataset, partition it, perform modal extraction, place optimal sensors, train the deep neural networks, and generate the final output plots, run the main script:
+### 2. Dual-Mode Dataset Generation & Full Experiments
+The pipeline supports a **Dual-Mode Dataset Setup**:
+1. **CFDBench Real Dataset**: If the real CFDBench `case0001` dataset is found in `data/raw/cylinder/case0001`, it will automatically slice and format the true fluid dynamics snapshots.
+2. **Synthetic Fallback Mode**: If the dataset is absent, it seamlessly falls back to a custom-built analytical generator mimicking a Kármán vortex street, ensuring the pipeline can be tested immediately without huge downloads.
+
+To execute the entire pipeline (data generation/parsing, partitioning, modal extraction, optimal sensor placement, neural network training, and final plot generation), simply run:
 ```bash
 python scripts/run_full_experiments.py
 ```
