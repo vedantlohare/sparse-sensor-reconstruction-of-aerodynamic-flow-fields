@@ -2,13 +2,10 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg)](https://pytorch.org/)
-[![Course](https://img.shields.io/badge/Course-AE646%20SciML-green.svg)](https://www.iitk.ac.in/)
-[![Institution](https://img.shields.io/badge/Institution-IIT%20Kanpur-red.svg)](https://www.iitk.ac.in/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Team:** VRIGHT BROTHERS  
-**Members:** Vedant Lohare (Roll: 241151) & Rajvardhan Beniwal (Roll: 240838)  
+**Authors:** Vedant Lohare & Rajvardhan Beniwal  
 **Affiliation:** Department of Aerospace Engineering, Indian Institute of Technology Kanpur (IIT Kanpur)  
-**Course:** AE646: Scientific Machine Learning for Fluid Mechanics (Stage 2 / Midsem Project)  
 
 ---
 
@@ -60,7 +57,7 @@ For external researchers and evaluators wishing to download the complete 10+ GB 
 
 ---
 
-### 2.2 Ingestion & Preprocessing Workflow (Stage 2 Baseline)
+### 2.2 Ingestion & Preprocessing Workflow (Baseline Pipeline)
 For the Stage 2 single-case baseline evaluation, the pipeline ingests **`case0001`** ($Re \approx 200$):
 1. **Transient Slicing:** The initial start-up transients ($t \in [0, 500]$) are removed, retaining $M = 1,500$ temporal snapshots ($t \in [500, 2000]$) of fully developed, quasi-periodic limit-cycle vortex shedding.
 2. **Chronological 70 / 15 / 15 Partition:** 
@@ -102,7 +99,6 @@ Committing 10+ GB (or single preprocessed 270 MB `.npz` arrays) violates GitHub'
 - **Mode 1 (Full CFD Benchmark):** When the local `data/raw/cylinder/case0001` directory is populated, the pipeline automatically ingests and trains on the true numerical CFD simulation data.
 - **Mode 2 (Automated Synthetic Fallback):** If someone clones the repository on a fresh machine without downloading the 10+ GB archive, running the pipeline automatically synthesizes a high-fidelity Kármán vortex street dataset in under 10 seconds. This guarantees **immediate, zero-friction execution and complete code reproducibility** without manual setup.
 
-> **Note for Course Submission & Grading:** In your Stage 2 submission ZIP (uploaded to Google Drive), preprocessed `.npz` files can be included directly if required, or left to auto-generate upon the first script execution.
 
 ---
 
@@ -154,7 +150,7 @@ vright_brothers_sparse_sensor/
 │
 ├── data/                          # Dataset ingestion, generation, and normalization
 │   ├── download_dataset.py        # Dual-mode ingestion: CFDBench parser + synthetic vortex generator
-│   └── preprocess.py              # 80/10/10 chronological split, scaling, and array caching
+│   └── preprocess.py              # 70/15/15 chronological split, scaling, and array caching
 │
 ├── src/                           # Modular source code library
 │   ├── rom/                       # Reduced-Order Modeling algorithms
@@ -179,7 +175,7 @@ vright_brothers_sparse_sensor/
 │   └── full_walkthrough.ipynb     # Jupyter Notebook with step-by-step walkthrough & visual outputs
 │
 ├── docs/                          # Academic documentation
-│   └── comprehensive_report.tex   # LaTeX source code for the Stage 2 Midsem Report (5-7 pages)
+│   └── comprehensive_report.tex   # LaTeX source code for the comprehensive technical report
 │
 └── output/                        # Saved artifacts (generated at runtime)
     ├── sensor_locations_p16.csv   # Coordinates (x, y) of the optimal Q-DEIM sensors
@@ -282,7 +278,7 @@ Model performance is evaluated not merely on pixel-level MSE, but on aerodynamic
 
 ---
 
-## 7. Preliminary Benchmark Results (Stage 2)
+## 7. Benchmark Results & Comparative Analysis
 
 Summary of reconstruction performance evaluated on the unseen test set ($M_{\text{test}} = 150$ snapshots) across sensor budgets $p$:
 
@@ -308,23 +304,19 @@ Summary of reconstruction performance evaluated on the unseen test set ($M_{\tex
 
 ---
 
-## 9. Stage 2 Submission Compliance Checklist
+## 9. Authors & Citation
 
-| Item | Requirement | Status | Location / Artifact |
-|---|---|---|---|
-| **1** | Project Report (PDF, 5–7 pages) | ✅ Completed | `docs/comprehensive_report.tex` (compiled to PDF) |
-| **2** | Project Presentation (PPT, 7-min talk) | ✅ Completed | Presentation PPT (without code snippets per rule #4) |
-| **3** | Code Archive (ZIP file) | ✅ Ready | Complete `vright_brothers_sparse_sensor/` folder |
-| **4** | Comprehensive README | ✅ Completed | This `README.md` file |
-| **5** | Platform & Reproducibility Specified | ✅ Completed | Specified in Section 2, 5, and 8 |
-| **6** | Runnable End-to-End Pipeline | ✅ Verified | `python scripts/run_full_experiments.py` |
+**Department of Aerospace Engineering, Indian Institute of Technology Kanpur (IIT Kanpur)**  
+- **Vedant Lohare**  
+- **Rajvardhan Beniwal**  
 
----
-
-## 10. Authors & Citation
-
-**Department of Aerospace Engineering, IIT Kanpur**  
-- **Vedant Lohare** — *B.Tech Aerospace Engineering* (vedantl21@iitk.ac.in)  
-- **Rajvardhan Beniwal** — *B.Tech Aerospace Engineering* (rajvardhan21@iitk.ac.in)  
-
-*Course Project for AE646: Scientific Machine Learning for Fluid Mechanics, Autumn 2026, under course instructor guidelines.*
+If you use or reference this codebase or methodology in your work, please cite:
+```bibtex
+@misc{lohare_beniwal_2026_sparse,
+  author = {Lohare, Vedant and Beniwal, Rajvardhan},
+  title = {Sparse-Sensor Reconstruction of Aerodynamic Flow Fields Using Reduced-Order Modeling and Deep Neural Networks},
+  year = {2026},
+  publisher = {GitHub},
+  howpublished = {\url{https://github.com/vedantlohare/sparse-sensor-reconstruction-of-aerodynamic-flow-fields}}
+}
+```
