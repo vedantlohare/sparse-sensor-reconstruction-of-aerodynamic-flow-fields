@@ -26,11 +26,53 @@ where $\mathbf{x}(t) \in \mathbb{R}^{N}$ is the high-dimensional flow state ($N 
 
 ---
 
-## 2. Dataset Architecture & Zero-Friction Reproducibility
+## 2. Dataset Architecture: CFDBench Benchmark & Reproducibility
 
-### Why Large `.npz` Data Files Are Not in Git
-High-fidelity CFD simulation arrays ($1500$ temporal snapshots $\times 2$ velocity channels $\times 64 \times 64$ spatial mesh) exceed **270 MB**, which strictly surpasses GitHub's 100 MB per-file push limit and bloats version-control history. In alignment with open-source scientific machine learning standards, this repository uses an **automated, self-generating dual-mode dataset pipeline**.
+### 2.1 The Full CFDBench Cylinder Benchmark (10+ GB, 136 Cases)
+This project evaluates sparse-sensor reconstruction on the open-source **CFDBench (Computational Fluid Dynamics Benchmark)** 2D circular cylinder wake dataset. The complete raw benchmark hosted in `data/raw/cylinder/` comprises over **10+ GB** of high-fidelity numerical simulation data across **136 realization cases** (`case0001` through `case0136` / `case0165`).
 
+#### Dataset Physical Specifications:
+- **Governing Equations:** Incompressible 2D Navier–Stokes equations for unsteady laminar flow past a circular cylinder.
+- **Parametric Regime:** Reynolds numbers spanning $Re \in [100, 400]$ exhibiting rich, non-linear unsteady Kármán vortex shedding.
+- **Mesh & Resolution:** Uniform Cartesian grid of $64 \times 64$ ($N_{\text{mesh}} = 4,096$ spatial nodes).
+- **Physical Domain:** $x \in [-0.02, 0.16]\,\text{m}$, $y \in [-0.06, 0.06]\,\text{m}$, cylinder radius $r = 0.01\,\text{m}$ (diameter $D = 0.02\,\text{m}$) placed at origin.
+- **State Vector:** 2 velocity channels ($u$: streamwise, $v$: cross-stream) $\rightarrow N = 2 \times 64 \times 64 = 8,192$ spatial state dimensions.
+
+#### Structure of Each Case Folder (`data/raw/cylinder/caseXXXX/`):
+- `u.npy`: Streamwise velocity component, shape $(2000, 64, 64)$, `float64`.
+- `v.npy`: Cross-stream velocity component, shape $(2000, 64, 64)$, `float64`.
+- `case.json`: Simulation metadata (inlet velocity $U_\infty$, fluid density $\rho$, dynamic viscosity $\mu$, cylinder radius, and boundary coordinates).
+
+#### How to Obtain the Open-Source CFDBench Dataset:
+For external researchers and evaluators wishing to download the complete 10+ GB raw benchmark:
+1. Access the open-source release via the [CFDBench Repository](https://github.com/lu-group/CFDBench) or associated open-access data archives.
+2. Extract the cylinder wake case folders into your local workspace under:
+   ```text
+   vright_brothers_sparse_sensor/data/raw/cylinder/
+   ├── case0001/
+   │   ├── u.npy
+   │   ├── v.npy
+   │   └── case.json
+   ├── case0002/
+   ...
+   └── case0136/
+   ```
+
+---
+
+### 2.2 Ingestion & Preprocessing Workflow (Stage 2 Baseline)
+For the Stage 2 single-case baseline evaluation, the pipeline ingests **`case0001`** ($Re \approx 200$):
+1. **Transient Slicing:** The initial start-up transients ($t \in [0, 500]$) are removed, retaining $M = 1,500$ temporal snapshots ($t \in [500, 2000]$) of fully developed, quasi-periodic limit-cycle vortex shedding.
+2. **Chronological 70 / 15 / 15 Partition:** 
+   - **Training Set:** First $1,050$ snapshots ($70\%$) for POD modal extraction and SensorMLP training.
+   - **Validation Set:** Next $225$ snapshots ($15\%$) for early stopping and hyperparameter monitoring.
+   - **Test Set:** Final $225$ snapshots ($15\%$) strictly held out for unseen temporal generalization benchmarks.
+3. **Channel Standardization:** Each velocity component ($u, v$) is standardized via Z-score scaling using strictly the training set mean $\mu_c$ and standard deviation $\sigma_c$:
+   $$\hat{x}_c = \frac{x_c - \mu_c}{\sigma_c}, \quad c \in \{u, v\}$$
+
+---
+
+### 2.3 Dual-Mode Operation & Zero-Friction Reproducibility
 ```
                            ┌───────────────────────────────┐
                            │   Dataset Ingestion Pipeline  │
@@ -43,29 +85,22 @@ High-fidelity CFD simulation arrays ($1500$ temporal snapshots $\times 2$ veloci
              ┌─────────────────────────┐   ┌─────────────────────────────┐
              │   Mode 1: CFDBench CFD  │   │  Mode 2: Synthetic Fallback │
              │  Ingests true numerical │   │  Generates Kármán vortex    │
-             │  transients from DNS/LES│   │  street analytically        │
+             │  snapshots from DNS/LES │   │  street analytically        │
              └────────────┬────────────┘   └──────────────┬──────────────┘
                           │                               │
                           └───────────────┬───────────────┘
                                           v
                            ┌───────────────────────────────┐
-                           │  preprocess.py (Train/Val/Test│
-                           │   80/10/10 Chronological Split│
-                           │   Z-Score / Mean Normalization│
+                           │  preprocess.py                │
+                           │   70/15/15 Chronological Split│
+                           │   Z-Score Channel Scaling     │
                            └───────────────────────────────┘
 ```
 
-### Dual Modes Explained:
-1. **Mode 1: CFDBench Numerical CFD Dataset (`data/raw/cylinder/case0001/`)**
-   - Ingests true numerical fluid simulation data (`u.npy`, `v.npy`).
-   - Automatically removes initial start-up transients ($t \in [500, 2000]$) to capture fully developed quasi-periodic vortex shedding.
-   - To use CFDBench data, place `u.npy` and `v.npy` into `data/raw/cylinder/case0001/` and run:
-     ```bash
-     python data/download_dataset.py --raw_dir data/raw/cylinder/case0001
-     ```
-2. **Mode 2: Synthetic Vortex Street Fallback (Default / Zero-Setup)**
-   - If no raw CFD files are detected, the pipeline automatically synthesizes an analytical 2D Kármán vortex street downstream of a cylinder ($Re \approx 100$–$200$, Strouhal number $St \approx 0.2$) with counter-rotating vortex pairs and viscous core dissipation.
-   - **Zero friction:** Anyone cloning this repository can run the entire pipeline immediately without downloading large external archives.
+#### Why Large Data Files Are Not in Git:
+Committing 10+ GB (or single preprocessed 270 MB `.npz` arrays) violates GitHub's 100 MB per-file push limit and bloats git history. Therefore:
+- **Mode 1 (Full CFD Benchmark):** When the local `data/raw/cylinder/case0001` directory is populated, the pipeline automatically ingests and trains on the true numerical CFD simulation data.
+- **Mode 2 (Automated Synthetic Fallback):** If someone clones the repository on a fresh machine without downloading the 10+ GB archive, running the pipeline automatically synthesizes a high-fidelity Kármán vortex street dataset in under 10 seconds. This guarantees **immediate, zero-friction execution and complete code reproducibility** without manual setup.
 
 > **Note for Course Submission & Grading:** In your Stage 2 submission ZIP (uploaded to Google Drive), preprocessed `.npz` files can be included directly if required, or left to auto-generate upon the first script execution.
 
@@ -175,21 +210,45 @@ pip install -r requirements.txt
 
 ---
 
-### 5.2 Single-Command Full Pipeline Execution
-To run the complete end-to-end experiment (auto-generating data if absent, performing POD modal decomposition, Q-DEIM sensor placement, training SensorMLP for 100 epochs, computing physical diagnostics, and generating comparison plots):
+### 5.2 Execution Workflows
+
+#### Workflow Option 1: Explicit 3-Step CFDBench Pipeline (Recommended for Research)
+If running directly on the full numerical CFDBench dataset:
+```powershell
+# PowerShell / Windows:
+# 1. Ingest snapshots 500:2000 from case0001 (1,500 snapshots, C=2, N=8,192)
+py -3.13 data/download_dataset.py --raw_dir data/raw/cylinder/case0001
+
+# 2. Chronological 70/15/15 split (1050 train, 225 val, 225 test) with Z-score scaling
+py -3.13 data/preprocess.py
+
+# 3. Train on CUDA: Thin SVD -> Q-DEIM (p=16, 2p=32 inputs) -> SensorMLP vs Gappy POD
+py -3.13 scripts/run_full_experiments.py
+```
+*(On Linux/macOS or standard environments, replace `py -3.13` with `python` or `python3`)*
+
+```bash
+# Bash equivalent:
+python data/download_dataset.py --raw_dir data/raw/cylinder/case0001
+python data/preprocess.py
+python scripts/run_full_experiments.py
+```
+
+#### Workflow Option 2: Single-Command Quickstart (Zero-Setup)
+To run the complete end-to-end experiment with a single command (which automatically checks for data, generates the synthetic fallback if raw files are absent, performs POD modal extraction, places Q-DEIM sensors, trains SensorMLP for 100 epochs, computes physical diagnostics, and generates comparison plots):
 ```bash
 python scripts/run_full_experiments.py
 ```
 
-**What this script does:**
-1. Verifies/generates the dataset in `data/processed/`.
-2. Computes the POD basis and extracts the top $K=16$ modes ($>99\%$ kinetic energy).
-3. Executes Q-DEIM to select $p=16$ optimal physical sensor locations.
+**What the pipeline executes:**
+1. Verifies/generates the preprocessed dataset in `data/processed/`.
+2. Computes the Thin SVD snapshot POD basis and extracts the top $K=16$ modes ($>99\%$ kinetic energy).
+3. Executes Q-DEIM pivoted QR to select $p=16$ optimal physical sensor coordinates.
 4. Saves sensor coordinates to `output/sensor_locations_p16.csv` and `sensor_locations_p16.npz`.
-5. Solves Gappy POD reconstruction as the linear benchmark.
+5. Solves Tikhonov-regularized Gappy POD reconstruction as the linear benchmark.
 6. Trains `SensorMLP` with physics-aware gradient & continuity loss on GPU/CPU.
-7. Computes physical metrics: Relative $L_2$, Vorticity RMSE, Continuity Divergence Residual.
-8. Renders `output/field_reconstruction.png` with actual sensor dots overlaid.
+7. Computes physical metrics: Relative $L_2$, Vorticity RMSE, and Continuity Divergence Residuals.
+8. Renders publication-grade `output/field_reconstruction.png` with actual sensor dots overlaid.
 
 ---
 
