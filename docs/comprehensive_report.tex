@@ -1,0 +1,45 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\title{Stage 2 Interim Report: Sparse-Sensor Reconstruction of Aerodynamic Flow Fields Using Reduced-Order Modeling and Deep Neural Networks}
+\author{VRIGHT BROTHERS: Vedant Lohare (241151) \& Rajvardhan Beniwal (240838)\\
+Department of Aerospace Engineering, IIT Kanpur\\
+AE646: Scientific Machine Learning for Fluid Mechanics}
+\date{September 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction and Objectives}
+This report details the Stage 2 implementation for the sparse-sensor reconstruction of high-fidelity aerodynamic flow fields. The primary objective is to solve the under-determined spatial inverse problem:
+\begin{equation}
+\mathbf{y} = \mathbf{C}\mathbf{x} + \boldsymbol{\eta}, \quad \mathbf{x} \in \mathbb{R}^N, \quad \mathbf{y} \in \mathbb{R}^p, \quad \boldsymbol{\eta} \sim \mathcal{N}(0, \sigma^2 \mathbf{I})
+\end{equation}
+where $p \ll N$. We benchmark Tikhonov-regularized Gappy POD with Q-DEIM against a custom Physics-Aware Sensor-to-Field MLP.
+
+\section{Methodology}
+\subsection{Classical Baseline: Gappy POD with Q-DEIM}
+We construct a mean-centered fluctuation snapshot matrix $\tilde{\mathbf{X}} \in \mathbb{R}^{N \times M}$ and compute its thin SVD to extract dominant spatial modes $\boldsymbol{\Phi}_r$. When $p < r$, the point-collocation matrix $\mathbf{M} = \boldsymbol{\Phi}_r^T \mathbf{C}^T \mathbf{C} \boldsymbol{\Phi}_r$ is strictly rank-deficient. Thus, modal coefficients $\mathbf{a}$ are recovered by minimizing the regularized spatial residual:
+\begin{equation}
+\hat{\mathbf{a}} = \left( \boldsymbol{\Phi}_r^T \mathbf{C}^T \mathbf{C} \boldsymbol{\Phi}_r + \mu \mathbf{I}_r \right)^{-1} \boldsymbol{\Phi}_r^T \mathbf{C}^T (\mathbf{y} - \mathbf{C}\bar{\mathbf{x}})
+\end{equation}
+Optimal sensor placement is determined using Q-DEIM, which performs a pivoted QR decomposition on $\boldsymbol{\Phi}_r^T$.
+
+\subsection{Deep Learning Architecture: SensorMLP}
+We train a 5-layer feedforward network $f_\theta : \mathbb{R}^p \rightarrow \mathbb{R}^N$ parametrized by intermediate latent dimensions $[128 \rightarrow 256 \rightarrow 512 \rightarrow 1024 \rightarrow N]$ with LayerNorm and GELU activations. The network is regularized using a composite physics-aware loss:
+\begin{equation}
+\mathcal{L}_{\text{total}} = \text{MSE}(\mathbf{\hat{x}}, \mathbf{x}) + \gamma_1 \|\nabla_x \mathbf{\hat{x}} - \nabla_x \mathbf{x}\|_1 + \gamma_2 \|\nabla_y \mathbf{\hat{x}} - \nabla_y \mathbf{x}\|_1
+\end{equation}
+
+\section{Implementation Status}
+We have successfully constructed the \texttt{data/}, \texttt{src/rom/}, \texttt{src/sciml/}, and \texttt{src/evaluation/} Python modules. The PyTorch training pipeline handles the composite gradients and backpropagates through the spatial finite-differences efficiently.
+
+\section{AI-Tool Use Declaration}
+Large language models (Gemini) were consulted for code modularization, repository structuring, and LaTeX syntax formatting. All mathematical derivations, implementations, and physical interpretations are fully understood and owned by the authors.
+
+\end{document}

@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+
+# Data
+data/raw/
+data/processed/
+data/*.npz
+
+# Output
+output/
+
+# OS
+.DS_Store
+
+# Specific files ignored per request
+docs/PROJECT_GUIDE.md
