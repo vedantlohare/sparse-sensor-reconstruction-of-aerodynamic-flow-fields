@@ -15,7 +15,7 @@ In experimental aerodynamics, wind-tunnel testing, and real-time closed-loop flo
 
 This project investigates and benchmarks two contrasting paradigms for solving the under-determined spatial inverse problem:
 $$\mathbf{y}(t) = \mathcal{P}(\mathbf{x}(t)) + \boldsymbol{\eta} \in \mathbb{R}^{d_{\text{sens}}}$$
-where $\mathbf{x}(t) \in \mathbb{R}^{N}$ is the high-dimensional flow state ($N = 2 \times 64 \times 64 = 8,192$ for 2D velocity fields $(u, v)$), $\mathcal{P}$ is the spatial observation operator measuring $p \ll N$ spatial points ($p \in [4, 128]$), and $\boldsymbol{\eta}$ represents measurement noise.
+where $\mathbf{x}(t) \in \mathbb{R}^{N}$ is the high-dimensional flow state ($N = 3 \times 64 \times 128 = 24,576$ for the 3-channel fields $(u, v, p)$), $\mathcal{P}$ is the spatial observation operator measuring $p \ll N$ spatial points ($p \in [4, 128]$), and $\boldsymbol{\eta}$ represents measurement noise.
 
 ### Core Comparison
 1. **Classical Reduced-Order Modeling (ROM):** Proper Orthogonal Decomposition (POD / SVD) coupled with condition-number-optimized **Q-DEIM (Discrete Empirical Interpolation Method)** sensor placement and **Tikhonov-regularized Gappy POD** inversion.
@@ -31,9 +31,9 @@ This project evaluates sparse-sensor reconstruction on the open-source **CFDBenc
 #### Dataset Physical Specifications:
 - **Governing Equations:** Incompressible 2D Navier–Stokes equations for unsteady laminar flow past a circular cylinder.
 - **Parametric Regime:** Reynolds numbers spanning $Re \in [100, 400]$ exhibiting rich, non-linear unsteady Kármán vortex shedding.
-- **Mesh & Resolution:** Uniform Cartesian grid of $64 \times 64$ ($N_{\text{mesh}} = 4,096$ spatial nodes).
+- **Mesh & Resolution:** The raw data is interpolated to a higher-aspect uniform Cartesian grid of $64 \times 128$ ($N_{\text{mesh}} = 8,192$ spatial nodes).
 - **Physical Domain:** $x \in [-0.02, 0.16]\,\text{m}$, $y \in [-0.06, 0.06]\,\text{m}$, cylinder radius $r = 0.01\,\text{m}$ (diameter $D = 0.02\,\text{m}$) placed at origin.
-- **State Vector:** 2 velocity channels ($u$: streamwise, $v$: cross-stream) $\rightarrow N = 2 \times 64 \times 64 = 8,192$ spatial state dimensions.
+- **State Vector:** 3 channels ($u$: streamwise, $v$: cross-stream, $p$: pressure) $\rightarrow N = 3 \times 64 \times 128 = 24,576$ spatial state dimensions.
 
 #### Structure of Each Case Folder (`data/raw/cylinder/caseXXXX/`):
 - `u.npy`: Streamwise velocity component, shape $(2000, 64, 64)$, `float64`.
@@ -58,14 +58,15 @@ For external researchers and evaluators wishing to download the complete 10+ GB 
 ---
 
 ### 2.2 Ingestion & Preprocessing Workflow (Baseline Pipeline)
-For the Stage 2 single-case baseline evaluation, the pipeline ingests **`case0001`** ($Re \approx 200$):
+For the Stage 2 single-case baseline evaluation, the pipeline ingests **`case0001`** ($Re \approx 200$) by default, but any of the 136 realization cases can be explicitly targeted using the `--case` flag:
 1. **Transient Slicing:** The initial start-up transients ($t \in [0, 500]$) are removed, retaining $M = 1,500$ temporal snapshots ($t \in [500, 2000]$) of fully developed, quasi-periodic limit-cycle vortex shedding.
-2. **Chronological 70 / 15 / 15 Partition:** 
+2. **Upsampling & Pressure Derivation:** Raw fields are interpolated from $64 \times 64$ to $64 \times 128$ using PyTorch bicubic interpolation. We analytically derive the pressure field $p$ by solving the 2D incompressible pressure-Poisson equation via a discrete Laplacian (assuming Dirichlet boundary conditions $p=0$ on domain edges for well-posedness).
+3. **Chronological 70 / 15 / 15 Partition:** 
    - **Training Set:** First $1,050$ snapshots ($70\%$) for POD modal extraction and SensorMLP training.
    - **Validation Set:** Next $225$ snapshots ($15\%$) for early stopping and hyperparameter monitoring.
    - **Test Set:** Final $225$ snapshots ($15\%$) strictly held out for unseen temporal generalization benchmarks.
-3. **Channel Standardization:** Each velocity component ($u, v$) is standardized via Z-score scaling using strictly the training set mean $\mu_c$ and standard deviation $\sigma_c$:
-   $$\hat{x}_c = \frac{x_c - \mu_c}{\sigma_c}, \quad c \in \{u, v\}$$
+4. **Channel Standardization:** Each state component ($u, v, p$) is standardized via Z-score scaling using strictly the training set mean $\mu_c$ and standard deviation $\sigma_c$:
+   $$\hat{x}_c = \frac{x_c - \mu_c}{\sigma_c}, \quad c \in \{u, v, p\}$$
 
 ---
 
@@ -124,8 +125,8 @@ where $\alpha = 10^{-6}$ provides numerical stabilization against ill-conditione
 ### 3.4 Deep Learning Architecture: SensorMLP
 The neural network learns a non-linear surrogate mapping directly from sparse measurements to the full discrete velocity state:
 $$\mathcal{F}_\theta: \mathbb{R}^{d_{\text{sens}}} \to \mathbb{R}^{N}$$
-- **Architecture:** $[2p] \to [256] \to [512] \to [1024] \to [N=8192]$
-- **Activations:** LeakyReLU ($\alpha=0.2$) with LayerNorm / Dropout regularization to prevent overfitting on temporal snapshots.
+- **Architecture:** $[2p] \to [256] \to [512] \to [1024] \to [N=24576]$
+- **Activations:** GELU (Gaussian Error Linear Unit) with LayerNorm regularization to stabilize the internal covariate shift across layers.
 
 ### 3.5 Physics-Aware Multi-Objective Loss
 Training is guided by a composite loss balancing data fidelity, spatial smoothness, and mass conservation:
@@ -233,8 +234,9 @@ python scripts/run_full_experiments.py
 #### Workflow Option 2: Single-Command Quickstart (Zero-Setup)
 To run the complete end-to-end experiment with a single command (which automatically checks for data, generates the synthetic fallback if raw files are absent, performs POD modal extraction, places Q-DEIM sensors, trains SensorMLP for 100 epochs, computes physical diagnostics, and generates comparison plots):
 ```bash
-python scripts/run_full_experiments.py
+python scripts/run_full_experiments.py --case case0001
 ```
+*(You can pass `--case caseXXXX` to evaluate the model on any of the 136 CFDBench realizations).*
 
 **What the pipeline executes:**
 1. Verifies/generates the preprocessed dataset in `data/processed/`.
@@ -282,12 +284,11 @@ Model performance is evaluated not merely on pixel-level MSE, but on aerodynamic
 
 Summary of reconstruction performance evaluated on the unseen test set ($M_{\text{test}} = 150$ snapshots) across sensor budgets $p$:
 
-| Metric | Sensor Budget $p=8$ (ROM / SciML) | Sensor Budget $p=16$ (ROM / SciML) | Sensor Budget $p=32$ (ROM / SciML) |
-|---|---|---|---|
-| **Relative $L_2$ Error** | $12.4\%$ / **$5.8\%$** | $6.2\%$ / **$2.4\%$** | $3.1\%$ / **$1.6\%$** |
-| **Vorticity RMSE ($\omega$)** | $0.182$ / **$0.094$** | $0.089$ / **$0.041$** | $0.044$ / **$0.026$** |
-| **Continuity Residual ($\nabla \cdot \mathbf{u}$)** | $0.145$ / **$0.038$** | $0.076$ / **$0.019$** | $0.035$ / **$0.012$** |
-| **Condition Number $\kappa(\boldsymbol{\Theta})$** | $18.4$ | $4.2$ | $1.8$ |
+| Metric | Sensor Budget $p=16$ (ROM) | Sensor Budget $p=16$ (SciML) |
+|---|---|---|
+| **Relative $L_2$ Error** | $44.06\%$ | **$3.09\%$** |
+| **Vorticity RMSE ($\omega$)** | $48.78\%$ | **$4.86\%$** |
+| **Continuity Residual ($\nabla \cdot \mathbf{u}$)** | **$0.092$** | $0.163$ |
 
 **Key Observations:**
 - **Q-DEIM Sensor Efficiency:** Q-DEIM sensor placement clusters sensors along the shear layers and wake centerline where vorticity gradients are steepest, drastically reducing condition numbers compared to uniform placement.

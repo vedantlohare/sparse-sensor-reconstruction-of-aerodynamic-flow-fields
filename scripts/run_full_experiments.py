@@ -18,9 +18,17 @@ from src.sciml.trainer import train_model
 from src.evaluation.metrics import relative_l2_error, compute_vorticity, vorticity_fidelity, mean_continuity_residual
 from src.evaluation.plotting import plot_reconstruction_comparison
 
+import argparse
+
 def main():
+    parser = argparse.ArgumentParser(description="Run Sparse-Sensor Reconstruction Pipeline")
+    parser.add_argument('--case', type=str, default='case0001', 
+                        help="Case directory name in data/raw/cylinder (e.g., case0001, case0042)")
+    args = parser.parse_args()
+
     print("="*80)
     print("VRIGHT BROTHERS: Sparse-Sensor Reconstruction Pipeline")
+    print(f"Targeting Dataset: {args.case}")
     print("="*80)
     
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -34,7 +42,12 @@ def main():
     
     # 1. Data Ingestion & Preprocessing
     if not os.path.exists(raw_data_path):
-        generate_synthetic_wake_data(num_snapshots=1500, save_dir=data_dir)
+        raw_dir = os.path.join(root_dir, 'data', 'raw', 'cylinder', args.case)
+        if os.path.exists(raw_dir):
+            from data.download_dataset import parse_cfdbench_dataset
+            parse_cfdbench_dataset(raw_dir, data_dir)
+        else:
+            generate_synthetic_wake_data(num_snapshots=1500, save_dir=data_dir)
         
     if not os.path.exists(prep_data_train):
         preprocess_data(data_dir)
