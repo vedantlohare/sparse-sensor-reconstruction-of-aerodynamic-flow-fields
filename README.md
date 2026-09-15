@@ -4,9 +4,6 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Authors:** Vedant Lohare & Rajvardhan Beniwal  
-**Affiliation:** Department of Aerospace Engineering, Indian Institute of Technology Kanpur (IIT Kanpur)  
-
 ---
 
 ## 1. Executive Summary & Motivation
@@ -14,8 +11,10 @@
 In experimental aerodynamics, wind-tunnel testing, and real-time closed-loop flow control, acquiring full-field velocity and pressure distributions around an aerodynamic body is critical for predicting boundary layer separation, aerodynamic drag, and vortex-induced vibrations. However, experimental constraints strictly limit data acquisition to a **very sparse array of discrete point sensors** (e.g., surface pressure taps, hot-wire anemometers, or shear-stress gauges).
 
 This project investigates and benchmarks two contrasting paradigms for solving the under-determined spatial inverse problem:
-$$\mathbf{y}(t) = \mathcal{P}(\mathbf{x}(t)) + \boldsymbol{\eta} \in \mathbb{R}^{d_{\text{sens}}}$$
-where $\mathbf{x}(t) \in \mathbb{R}^{N}$ is the high-dimensional flow state ($N = 3 \times 64 \times 128 = 24,576$ for the 3-channel fields $(u, v, p)$), $\mathcal{P}$ is the spatial observation operator measuring $p \ll N$ spatial points ($p \in [4, 128]$), and $\boldsymbol{\eta}$ represents measurement noise.
+
+$$ \mathbf{y}(t) = \mathcal{P}(\mathbf{x}(t)) + \boldsymbol{\eta} \in \mathbb{R}^{d_{\text{sens}}} $$
+
+where $\mathbf{x}(t) \in \mathbb{R}^{N}$ is the high-dimensional flow state ($N = 3 \times 64 \times 128 = 24,576$ for the 3-channel fields $u, v, p$), $\mathcal{P}$ is the spatial observation operator measuring $p \ll N$ spatial points ($p \in [4, 128]$), and $\boldsymbol{\eta}$ represents measurement noise.
 
 ### Core Comparison
 1. **Classical Reduced-Order Modeling (ROM):** Proper Orthogonal Decomposition (POD / SVD) coupled with condition-number-optimized **Q-DEIM (Discrete Empirical Interpolation Method)** sensor placement and **Tikhonov-regularized Gappy POD** inversion.
@@ -23,17 +22,17 @@ where $\mathbf{x}(t) \in \mathbb{R}^{N}$ is the high-dimensional flow state ($N 
 
 ---
 
-## 2. Dataset Architecture: CFDBench Benchmark & Reproducibility
+## 2. Dataset Architecture & Reproducibility
 
 ### 2.1 The Full CFDBench Cylinder Benchmark (10+ GB, 136 Cases)
-This project evaluates sparse-sensor reconstruction on the open-source **CFDBench (Computational Fluid Dynamics Benchmark)** 2D circular cylinder wake dataset. The complete raw benchmark hosted in `data/raw/cylinder/` comprises over **10+ GB** of high-fidelity numerical simulation data across **136 realization cases** (`case0001` through `case0136` / `case0165`).
+This project evaluates sparse-sensor reconstruction on the open-source **CFDBench (Computational Fluid Dynamics Benchmark)** 2D circular cylinder wake dataset. The complete raw benchmark comprises over **10+ GB** of high-fidelity numerical simulation data across **136 realization cases** (`case0001` through `case0136`).
 
 #### Dataset Physical Specifications:
-- **Governing Equations:** Incompressible 2D Navier–Stokes equations for unsteady laminar flow past a circular cylinder.
+- **Governing Equations:** Incompressible 2D Navier-Stokes equations for unsteady laminar flow past a circular cylinder.
 - **Parametric Regime:** Reynolds numbers spanning $Re \in [100, 400]$ exhibiting rich, non-linear unsteady Kármán vortex shedding.
 - **Mesh & Resolution:** The raw data is interpolated to a higher-aspect uniform Cartesian grid of $64 \times 128$ ($N_{\text{mesh}} = 8,192$ spatial nodes).
-- **Physical Domain:** $x \in [-0.02, 0.16]\,\text{m}$, $y \in [-0.06, 0.06]\,\text{m}$, cylinder radius $r = 0.01\,\text{m}$ (diameter $D = 0.02\,\text{m}$) placed at origin.
-- **State Vector:** 3 channels ($u$: streamwise, $v$: cross-stream, $p$: pressure) $\rightarrow N = 3 \times 64 \times 128 = 24,576$ spatial state dimensions.
+- **Physical Domain:** $x \in [-0.02, 0.16]\text{ m}$, $y \in [-0.06, 0.06]\text{ m}$, cylinder radius $r = 0.01\text{ m}$ (diameter $D = 0.02\text{ m}$) placed at origin.
+- **State Vector:** 3 channels ($u$: streamwise, $v$: cross-stream, $p$: pressure) yielding $N = 3 \times 64 \times 128 = 24,576$ spatial state dimensions.
 
 #### Structure of Each Case Folder (`data/raw/cylinder/caseXXXX/`):
 - `u.npy`: Streamwise velocity component, shape $(2000, 64, 64)$, `float64`.
@@ -58,7 +57,7 @@ Since the full 10+ GB dataset cannot be uploaded to GitHub due to size limits, y
 ---
 
 ### 2.2 Ingestion & Preprocessing Workflow (Baseline Pipeline)
-For the Stage 2 single-case baseline evaluation, the pipeline ingests **`case0001`** ($Re \approx 200$) by default, but any of the 136 realization cases can be explicitly targeted using the `--case` flag:
+For the baseline evaluation, the pipeline ingests **`case0001`** ($Re \approx 200$) by default, but any of the 136 realization cases can be explicitly targeted using the `--case` flag:
 1. **Transient Slicing:** The initial start-up transients ($t \in [0, 500]$) are removed, retaining $M = 1,500$ temporal snapshots ($t \in [500, 2000]$) of fully developed, quasi-periodic limit-cycle vortex shedding.
 2. **Upsampling & Pressure Derivation:** Raw fields are interpolated from $64 \times 64$ to $64 \times 128$ using PyTorch bicubic interpolation. We analytically derive the pressure field $p$ by solving the 2D incompressible pressure-Poisson equation via a discrete Laplacian (assuming Dirichlet boundary conditions $p=0$ on domain edges for well-posedness).
 3. **Chronological 70 / 15 / 15 Partition:** 
@@ -66,12 +65,13 @@ For the Stage 2 single-case baseline evaluation, the pipeline ingests **`case000
    - **Validation Set:** Next $225$ snapshots ($15\%$) for early stopping and hyperparameter monitoring.
    - **Test Set:** Final $225$ snapshots ($15\%$) strictly held out for unseen temporal generalization benchmarks.
 4. **Channel Standardization:** Each state component ($u, v, p$) is standardized via Z-score scaling using strictly the training set mean $\mu_c$ and standard deviation $\sigma_c$:
-   $$\hat{x}_c = \frac{x_c - \mu_c}{\sigma_c}, \quad c \in \{u, v, p\}$$
+   
+   $$ \hat{x}_c = \frac{x_c - \mu_c}{\sigma_c}, \quad c \in \{u, v, p\} $$
 
 ---
 
 ### 2.3 Dual-Mode Operation & Zero-Friction Reproducibility
-```
+```text
                            ┌───────────────────────────────┐
                            │   Dataset Ingestion Pipeline  │
                            └───────────────┬───────────────┘
@@ -107,43 +107,59 @@ Committing 10+ GB (or single preprocessed 270 MB `.npz` arrays) violates GitHub'
 
 ### 3.1 Proper Orthogonal Decomposition (POD)
 The snapshot matrix $\mathbf{X} \in \mathbb{R}^{N \times M}$ (mean-subtracted) undergoes Thin Singular Value Decomposition:
-$$\mathbf{X} = \boldsymbol{\Phi} \boldsymbol{\Sigma} \mathbf{V}^T$$
+
+$$ \mathbf{X} = \boldsymbol{\Phi} \boldsymbol{\Sigma} \mathbf{V}^T $$
+
 where $\boldsymbol{\Phi} \in \mathbb{R}^{N \times K}$ represents the orthonormal spatial modes, and the cumulative kinetic energy captured by $K$ modes is:
-$$\mathcal{E}(K) = \frac{\sum_{j=1}^K \sigma_j^2}{\sum_{j=1}^{\min(N,M)} \sigma_j^2} \ge 99.0\%$$
+
+$$ \mathcal{E}(K) = \frac{\sum_{j=1}^K \sigma_j^2}{\sum_{j=1}^{\min(N,M)} \sigma_j^2} \ge 99.0\% $$
 
 ### 3.2 Optimal Sensor Placement (Q-DEIM)
 Rather than placing sensors randomly or uniformly, Q-DEIM uses column-pivoted QR decomposition on the transpose of the leading spatial POD modes $\boldsymbol{\Phi}_K^T$:
-$$\boldsymbol{\Phi}_K^T \mathbf{P} = \mathbf{Q} \mathbf{R}$$
+
+$$ \boldsymbol{\Phi}_K^T \mathbf{P} = \mathbf{Q} \mathbf{R} $$
+
 The permutation matrix $\mathbf{P}$ yields the optimal measurement indices $\mathbf{p} = \mathbf{P}_{1:p}$. This greedily minimizes the condition number of the measurement matrix $\boldsymbol{\Theta} = \boldsymbol{\Phi}_{K}(\mathbf{p}, :)$, maximizing linear independence and noise resistance.
 
 ### 3.3 Tikhonov-Regularized Gappy POD
 Given sparse readings $\mathbf{y} \in \mathbb{R}^{d_{\text{sens}}}$, the modal amplitudes $\mathbf{a}$ are inverted via:
-$$\hat{\mathbf{a}} = \left(\boldsymbol{\Theta}^T \boldsymbol{\Theta} + \alpha \mathbf{I}\right)^{-1} \boldsymbol{\Theta}^T \mathbf{y}$$
-$$\hat{\mathbf{x}}_{\text{gappy}} = \boldsymbol{\Phi}_K \hat{\mathbf{a}} + \bar{\mathbf{x}}$$
+
+$$ \hat{\mathbf{a}} = \left(\boldsymbol{\Theta}^T \boldsymbol{\Theta} + \alpha \mathbf{I}\right)^{-1} \boldsymbol{\Theta}^T \mathbf{y} $$
+$$ \hat{\mathbf{x}}_{\text{gappy}} = \boldsymbol{\Phi}_K \hat{\mathbf{a}} + \bar{\mathbf{x}} $$
+
 where $\alpha = 10^{-6}$ provides numerical stabilization against ill-conditioned sensor topologies.
 
 ### 3.4 Deep Learning Architecture: SensorMLP
 The neural network learns a non-linear surrogate mapping directly from sparse measurements to the full discrete velocity state:
-$$\mathcal{F}_\theta: \mathbb{R}^{d_{\text{sens}}} \to \mathbb{R}^{N}$$
+
+$$ \mathcal{F}_\theta: \mathbb{R}^{d_{\text{sens}}} \to \mathbb{R}^{N} $$
+
 - **Architecture:** $[2p] \to [256] \to [512] \to [1024] \to [N=24576]$
 - **Activations:** GELU (Gaussian Error Linear Unit) with LayerNorm regularization to stabilize the internal covariate shift across layers.
 
 ### 3.5 Physics-Aware Multi-Objective Loss
 Training is guided by a composite loss balancing data fidelity, spatial smoothness, and mass conservation:
-$$\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{MSE}} + \lambda_{\text{grad}} \mathcal{L}_{\text{grad}} + \lambda_{\text{cont}} \mathcal{L}_{\text{cont}}$$
+
+$$ \mathcal{L}_{\text{total}} = \mathcal{L}_{\text{MSE}} + \lambda_{\text{grad}} \mathcal{L}_{\text{grad}} + \lambda_{\text{cont}} \mathcal{L}_{\text{cont}} $$
+
 1. **Data Reconstruction Loss:**
-   $$\mathcal{L}_{\text{MSE}} = \frac{1}{B \cdot N} \|\mathbf{x} - \hat{\mathbf{x}}\|_2^2$$
+   
+   $$ \mathcal{L}_{\text{MSE}} = \frac{1}{B \cdot N} \|\mathbf{x} - \hat{\mathbf{x}}\|_2^2 $$
+
 2. **Spatial Gradient Regularization (Vorticity Penalty):**
-   $$\mathcal{L}_{\text{grad}} = \frac{1}{B} \sum_{c \in \{u, v\}} \left( \left\|\frac{\partial \hat{\mathbf{x}}_c}{\partial x} - \frac{\partial \mathbf{x}_c}{\partial x}\right\|_2^2 + \left\|\frac{\partial \hat{\mathbf{x}}_c}{\partial y} - \frac{\partial \mathbf{x}_c}{\partial y}\right\|_2^2 \right)$$
+   
+   $$ \mathcal{L}_{\text{grad}} = \frac{1}{B} \sum_{c \in \{u, v\}} \left( \left\|\frac{\partial \hat{\mathbf{x}}_c}{\partial x} - \frac{\partial \mathbf{x}_c}{\partial x}\right\|_2^2 + \left\|\frac{\partial \hat{\mathbf{x}}_c}{\partial y} - \frac{\partial \mathbf{x}_c}{\partial y}\right\|_2^2 \right) $$
+
 3. **Continuity Equation Residual (Incompressibility Constraint):**
-   $$\mathcal{L}_{\text{cont}} = \frac{1}{B} \left\| \frac{\partial \hat{u}}{\partial x} + \frac{\partial \hat{v}}{\partial y} \right\|_2^2$$
+   
+   $$ \mathcal{L}_{\text{cont}} = \frac{1}{B} \left\| \frac{\partial \hat{u}}{\partial x} + \frac{\partial \hat{v}}{\partial y} \right\|_2^2 $$
 
 ---
 
 ## 4. Repository Structure
 
 ```text
-vright_brothers_sparse_sensor/
+sparse_sensor_reconstruction/
 ├── README.md                      # Comprehensive project guide and reproduction instructions
 ├── requirements.txt               # Pinned Python package dependencies
 ├── environment.yml                # Conda environment specification (with CUDA support)
@@ -211,23 +227,14 @@ pip install -r requirements.txt
 
 #### Workflow Option 1: Explicit 3-Step CFDBench Pipeline (Recommended for Research)
 If running directly on the full numerical CFDBench dataset:
-```powershell
-# PowerShell / Windows:
+```bash
 # 1. Ingest snapshots 500:2000 from case0001 (1,500 snapshots, C=2, N=8,192)
-py -3.13 data/download_dataset.py --raw_dir data/raw/cylinder/case0001
+python data/download_dataset.py --raw_dir data/raw/cylinder/case0001
 
 # 2. Chronological 70/15/15 split (1050 train, 225 val, 225 test) with Z-score scaling
-py -3.13 data/preprocess.py
+python data/preprocess.py
 
 # 3. Train on CUDA: Thin SVD -> Q-DEIM (p=16, 2p=32 inputs) -> SensorMLP vs Gappy POD
-py -3.13 scripts/run_full_experiments.py
-```
-*(On Linux/macOS or standard environments, replace `py -3.13` with `python` or `python3`)*
-
-```bash
-# Bash equivalent:
-python data/download_dataset.py --raw_dir data/raw/cylinder/case0001
-python data/preprocess.py
 python scripts/run_full_experiments.py
 ```
 
@@ -271,11 +278,17 @@ jupyter notebook notebooks/full_walkthrough.ipynb
 Model performance is evaluated not merely on pixel-level MSE, but on aerodynamically critical derived quantities:
 
 1. **Relative $L_2$ Velocity Norm:**
-   $$\epsilon_{L_2} = \frac{\|\mathbf{u}_{\text{true}} - \mathbf{u}_{\text{pred}}\|_2}{\|\mathbf{u}_{\text{true}}\|_2}$$
+   
+   $$ \epsilon_{L_2} = \frac{\|\mathbf{u}_{\text{true}} - \mathbf{u}_{\text{pred}}\|_2}{\|\mathbf{u}_{\text{true}}\|_2} $$
+
 2. **Vorticity Field RMSE ($\omega$):**
-   $$\omega = \frac{\partial v}{\partial x} - \frac{\partial u}{\partial y}, \quad \text{RMSE}_\omega = \sqrt{\frac{1}{N} \sum (\omega_{\text{true}} - \omega_{\text{pred}})^2}$$
+   
+   $$ \omega = \frac{\partial v}{\partial x} - \frac{\partial u}{\partial y}, \quad \text{RMSE}_\omega = \sqrt{\frac{1}{N} \sum (\omega_{\text{true}} - \omega_{\text{pred}})^2} $$
+
 3. **Continuity Equation Divergence Residual:**
-   $$\mathcal{R}_{\text{cont}} = \left\| \frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} \right\|_2$$
+   
+   $$ \mathcal{R}_{\text{cont}} = \left\| \frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} \right\|_2 $$
+   
    Measures whether the reconstructed field respects physical mass conservation for incompressible flow.
 
 ---
@@ -296,28 +309,21 @@ Summary of reconstruction performance evaluated on the unseen test set ($M_{\tex
 
 ---
 
-## 8. Computational Environment & Hardware Details
+## 8. Hardware & Computational Requirements
 
-- **Primary Platform:** Local Workstation / Windows 11
-- **GPU Acceleration:** NVIDIA RTX 3060 (12 GB VRAM) / CUDA 12.x
-- **Runtime:** $< 3$ minutes for 100 epochs of SensorMLP training; $< 10$ seconds for POD + Q-DEIM modal extraction.
-- **CPU / Google Colab Support:** All scripts automatically detect CUDA availability and fall back smoothly to multi-threaded CPU execution. The code is 100% compatible with free-tier Google Colab GPU runtimes.
+To ensure reproducibility and efficient execution of the neural network components, the following system requirements are recommended:
 
----
+### Minimum Requirements (CPU Only)
+- **Processor:** Modern 4-core CPU (Intel Core i5 / AMD Ryzen 5 or better)
+- **Memory (RAM):** 8 GB RAM
+- **Storage:** ~1 GB of free disk space (for synthetic fallback mode)
+- **Runtime:** ~15–20 minutes for a full training loop (100 epochs)
 
-## 9. Authors & Citation
+### Suggested Requirements (GPU Accelerated)
+- **Processor:** Modern 8-core CPU
+- **Memory (RAM):** 16 GB+ RAM (recommended when ingesting the full 10+ GB raw CFDBench archive)
+- **GPU:** NVIDIA GPU with 6+ GB VRAM (e.g., GTX 1060, RTX 2060, or better)
+- **Storage:** 15 GB+ free disk space (to store the full CFDBench dataset)
+- **Runtime:** $< 3$ minutes for 100 epochs of SensorMLP training on an RTX-class GPU.
 
-**Department of Aerospace Engineering, Indian Institute of Technology Kanpur (IIT Kanpur)**  
-- **Vedant Lohare**  
-- **Rajvardhan Beniwal**  
-
-If you use or reference this codebase or methodology in your work, please cite:
-```bibtex
-@misc{lohare_beniwal_2026_sparse,
-  author = {Lohare, Vedant and Beniwal, Rajvardhan},
-  title = {Sparse-Sensor Reconstruction of Aerodynamic Flow Fields Using Reduced-Order Modeling and Deep Neural Networks},
-  year = {2026},
-  publisher = {GitHub},
-  howpublished = {\url{https://github.com/vedantlohare/sparse-sensor-reconstruction-of-aerodynamic-flow-fields}}
-}
-```
+*Note: All scripts automatically detect CUDA availability via PyTorch. If no compatible GPU is found, the system smoothly falls back to multi-threaded CPU execution. The code is also 100% compatible with free-tier Google Colab GPU environments.*
