@@ -12,13 +12,15 @@ In experimental aerodynamics, wind-tunnel testing, and real-time closed-loop flo
 
 This project investigates and benchmarks two contrasting paradigms for solving the under-determined spatial inverse problem:
 
-$$ \mathbf{y}(t) = \mathcal{P}(\mathbf{x}(t)) + \boldsymbol{\eta} \in \mathbb{R}^{d_{\text{sens}}} $$
+```math
+\mathbf{y}(t) = \mathcal{P}(\mathbf{x}(t)) + \boldsymbol{\eta} \in \mathbb{R}^{d_{\text{sens}}}
+```
 
 where $\mathbf{x}(t) \in \mathbb{R}^{N}$ is the high-dimensional flow state ($N = 3 \times 64 \times 128 = 24,576$ for the 3-channel fields $u, v, p$), $\mathcal{P}$ is the spatial observation operator measuring $p \ll N$ spatial points ($p \in [4, 128]$), and $\boldsymbol{\eta}$ represents measurement noise.
 
 ### Core Comparison
 1. **Classical Reduced-Order Modeling (ROM):** Proper Orthogonal Decomposition (POD / SVD) coupled with condition-number-optimized **Q-DEIM (Discrete Empirical Interpolation Method)** sensor placement and **Tikhonov-regularized Gappy POD** inversion.
-2. **Deep Scientific Machine Learning (SciML):** A deep non-linear **SensorMLP** mapping sparse sensor measurements directly to full-field fluid velocity, constrained by a multi-objective **Physics-Aware Loss Function** enforcing spatial gradient continuity and mass-conservation residuals ($\nabla \cdot \mathbf{u} = 0$).
+2. **Deep Scientific Machine Learning (SciML):** A deep non-linear **SensorMLP** mapping sparse sensor measurements directly to full-field fluid velocity, constrained by a multi-objective **Physics-Aware Loss Function** enforcing spatial gradient continuity and mass-conservation residuals.
 
 ---
 
@@ -29,7 +31,7 @@ This project evaluates sparse-sensor reconstruction on the open-source **CFDBenc
 
 #### Dataset Physical Specifications:
 - **Governing Equations:** Incompressible 2D Navier-Stokes equations for unsteady laminar flow past a circular cylinder.
-- **Parametric Regime:** Reynolds numbers spanning $Re \in [100, 400]$ exhibiting rich, non-linear unsteady Kármán vortex shedding.
+- **Parametric Regime:** Reynolds numbers spanning $Re \in [100, 400]$ exhibiting rich, non-linear unsteady Karman vortex shedding.
 - **Mesh & Resolution:** The raw data is interpolated to a higher-aspect uniform Cartesian grid of $64 \times 128$ ($N_{\text{mesh}} = 8,192$ spatial nodes).
 - **Physical Domain:** $x \in [-0.02, 0.16]\text{ m}$, $y \in [-0.06, 0.06]\text{ m}$, cylinder radius $r = 0.01\text{ m}$ (diameter $D = 0.02\text{ m}$) placed at origin.
 - **State Vector:** 3 channels ($u$: streamwise, $v$: cross-stream, $p$: pressure) yielding $N = 3 \times 64 \times 128 = 24,576$ spatial state dimensions.
@@ -64,9 +66,11 @@ For the baseline evaluation, the pipeline ingests **`case0001`** ($Re \approx 20
    - **Training Set:** First $1,050$ snapshots ($70\%$) for POD modal extraction and SensorMLP training.
    - **Validation Set:** Next $225$ snapshots ($15\%$) for early stopping and hyperparameter monitoring.
    - **Test Set:** Final $225$ snapshots ($15\%$) strictly held out for unseen temporal generalization benchmarks.
-4. **Channel Standardization:** Each state component ($u, v, p$) is standardized via Z-score scaling using strictly the training set mean $\mu_c$ and standard deviation $\sigma_c$:
+4. **Channel Standardization:** Each state component ($u, v, p$) is standardized via Z-score scaling using strictly the training set mean and standard deviation:
    
-   $$ \hat{x}_c = \frac{x_c - \mu_c}{\sigma_c}, \quad c \in \{u, v, p\} $$
+```math
+\hat{x}_c = \frac{x_c - \mu_c}{\sigma_c}, \quad c \in \{u, v, p\}
+```
 
 ---
 
@@ -82,7 +86,7 @@ For the baseline evaluation, the pipeline ingests **`case0001`** ($Re \approx 20
                                   v         v
              ┌─────────────────────────┐   ┌─────────────────────────────┐
              │   Mode 1: CFDBench CFD  │   │  Mode 2: Synthetic Fallback │
-             │  Ingests true numerical │   │  Generates Kármán vortex    │
+             │  Ingests true numerical │   │  Generates Karman vortex    │
              │  snapshots from DNS/LES │   │  street analytically        │
              └────────────┬────────────┘   └──────────────┬──────────────┘
                           │                               │
@@ -98,7 +102,7 @@ For the baseline evaluation, the pipeline ingests **`case0001`** ($Re \approx 20
 #### Why Large Data Files Are Not in Git:
 Committing 10+ GB (or single preprocessed 270 MB `.npz` arrays) violates GitHub's 100 MB per-file push limit and bloats git history. Therefore:
 - **Mode 1 (Full CFD Benchmark):** When the local `data/raw/cylinder/case0001` directory is populated, the pipeline automatically ingests and trains on the true numerical CFD simulation data.
-- **Mode 2 (Automated Synthetic Fallback):** If someone clones the repository on a fresh machine without downloading the 10+ GB archive, running the pipeline automatically synthesizes a high-fidelity Kármán vortex street dataset in under 10 seconds. This guarantees **immediate, zero-friction execution and complete code reproducibility** without manual setup.
+- **Mode 2 (Automated Synthetic Fallback):** If someone clones the repository on a fresh machine without downloading the 10+ GB archive, running the pipeline automatically synthesizes a high-fidelity Karman vortex street dataset in under 10 seconds. This guarantees **immediate, zero-friction execution and complete code reproducibility** without manual setup.
 
 
 ---
@@ -108,31 +112,43 @@ Committing 10+ GB (or single preprocessed 270 MB `.npz` arrays) violates GitHub'
 ### 3.1 Proper Orthogonal Decomposition (POD)
 The snapshot matrix $\mathbf{X} \in \mathbb{R}^{N \times M}$ (mean-subtracted) undergoes Thin Singular Value Decomposition:
 
-$$ \mathbf{X} = \boldsymbol{\Phi} \boldsymbol{\Sigma} \mathbf{V}^T $$
+```math
+\mathbf{X} = \boldsymbol{\Phi} \boldsymbol{\Sigma} \mathbf{V}^T
+```
 
 where $\boldsymbol{\Phi} \in \mathbb{R}^{N \times K}$ represents the orthonormal spatial modes, and the cumulative kinetic energy captured by $K$ modes is:
 
-$$ \mathcal{E}(K) = \frac{\sum_{j=1}^K \sigma_j^2}{\sum_{j=1}^{\min(N,M)} \sigma_j^2} \ge 99.0\% $$
+```math
+\mathcal{E}(K) = \frac{\sum_{j=1}^K \sigma_j^2}{\sum_{j=1}^{\min(N,M)} \sigma_j^2} \ge 99.0\%
+```
 
 ### 3.2 Optimal Sensor Placement (Q-DEIM)
-Rather than placing sensors randomly or uniformly, Q-DEIM uses column-pivoted QR decomposition on the transpose of the leading spatial POD modes $\boldsymbol{\Phi}_K^T$:
+Rather than placing sensors randomly or uniformly, Q-DEIM uses column-pivoted QR decomposition on the transpose of the leading spatial POD modes:
 
-$$ \boldsymbol{\Phi}_K^T \mathbf{P} = \mathbf{Q} \mathbf{R} $$
+```math
+\boldsymbol{\Phi}_K^T \mathbf{P} = \mathbf{Q} \mathbf{R}
+```
 
-The permutation matrix $\mathbf{P}$ yields the optimal measurement indices $\mathbf{p} = \mathbf{P}_{1:p}$. This greedily minimizes the condition number of the measurement matrix $\boldsymbol{\Theta} = \boldsymbol{\Phi}_{K}(\mathbf{p}, :)$, maximizing linear independence and noise resistance.
+The permutation matrix $\mathbf{P}$ yields the optimal measurement indices. This greedily minimizes the condition number of the measurement matrix, maximizing linear independence and noise resistance.
 
 ### 3.3 Tikhonov-Regularized Gappy POD
 Given sparse readings $\mathbf{y} \in \mathbb{R}^{d_{\text{sens}}}$, the modal amplitudes $\mathbf{a}$ are inverted via:
 
-$$ \hat{\mathbf{a}} = \left(\boldsymbol{\Theta}^T \boldsymbol{\Theta} + \alpha \mathbf{I}\right)^{-1} \boldsymbol{\Theta}^T \mathbf{y} $$
-$$ \hat{\mathbf{x}}_{\text{gappy}} = \boldsymbol{\Phi}_K \hat{\mathbf{a}} + \bar{\mathbf{x}} $$
+```math
+\hat{\mathbf{a}} = \left(\boldsymbol{\Theta}^T \boldsymbol{\Theta} + \alpha \mathbf{I}\right)^{-1} \boldsymbol{\Theta}^T \mathbf{y}
+```
+```math
+\hat{\mathbf{x}}_{\text{gappy}} = \boldsymbol{\Phi}_K \hat{\mathbf{a}} + \bar{\mathbf{x}}
+```
 
 where $\alpha = 10^{-6}$ provides numerical stabilization against ill-conditioned sensor topologies.
 
 ### 3.4 Deep Learning Architecture: SensorMLP
 The neural network learns a non-linear surrogate mapping directly from sparse measurements to the full discrete velocity state:
 
-$$ \mathcal{F}_\theta: \mathbb{R}^{d_{\text{sens}}} \to \mathbb{R}^{N} $$
+```math
+\mathcal{F}_\theta: \mathbb{R}^{d_{\text{sens}}} \to \mathbb{R}^{N}
+```
 
 - **Architecture:** $[2p] \to [256] \to [512] \to [1024] \to [N=24576]$
 - **Activations:** GELU (Gaussian Error Linear Unit) with LayerNorm regularization to stabilize the internal covariate shift across layers.
@@ -140,19 +156,27 @@ $$ \mathcal{F}_\theta: \mathbb{R}^{d_{\text{sens}}} \to \mathbb{R}^{N} $$
 ### 3.5 Physics-Aware Multi-Objective Loss
 Training is guided by a composite loss balancing data fidelity, spatial smoothness, and mass conservation:
 
-$$ \mathcal{L}_{\text{total}} = \mathcal{L}_{\text{MSE}} + \lambda_{\text{grad}} \mathcal{L}_{\text{grad}} + \lambda_{\text{cont}} \mathcal{L}_{\text{cont}} $$
+```math
+\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{MSE}} + \lambda_{\text{grad}} \mathcal{L}_{\text{grad}} + \lambda_{\text{cont}} \mathcal{L}_{\text{cont}}
+```
 
 1. **Data Reconstruction Loss:**
    
-   $$ \mathcal{L}_{\text{MSE}} = \frac{1}{B \cdot N} \|\mathbf{x} - \hat{\mathbf{x}}\|_2^2 $$
+```math
+\mathcal{L}_{\text{MSE}} = \frac{1}{B \cdot N} \|\mathbf{x} - \hat{\mathbf{x}}\|_2^2
+```
 
 2. **Spatial Gradient Regularization (Vorticity Penalty):**
    
-   $$ \mathcal{L}_{\text{grad}} = \frac{1}{B} \sum_{c \in \{u, v\}} \left( \left\|\frac{\partial \hat{\mathbf{x}}_c}{\partial x} - \frac{\partial \mathbf{x}_c}{\partial x}\right\|_2^2 + \left\|\frac{\partial \hat{\mathbf{x}}_c}{\partial y} - \frac{\partial \mathbf{x}_c}{\partial y}\right\|_2^2 \right) $$
+```math
+\mathcal{L}_{\text{grad}} = \frac{1}{B} \sum_{c \in \{u, v\}} \left( \left\|\frac{\partial \hat{\mathbf{x}}_c}{\partial x} - \frac{\partial \mathbf{x}_c}{\partial x}\right\|_2^2 + \left\|\frac{\partial \hat{\mathbf{x}}_c}{\partial y} - \frac{\partial \mathbf{x}_c}{\partial y}\right\|_2^2 \right)
+```
 
 3. **Continuity Equation Residual (Incompressibility Constraint):**
    
-   $$ \mathcal{L}_{\text{cont}} = \frac{1}{B} \left\| \frac{\partial \hat{u}}{\partial x} + \frac{\partial \hat{v}}{\partial y} \right\|_2^2 $$
+```math
+\mathcal{L}_{\text{cont}} = \frac{1}{B} \left\| \frac{\partial \hat{u}}{\partial x} + \frac{\partial \hat{v}}{\partial y} \right\|_2^2
+```
 
 ---
 
@@ -279,15 +303,21 @@ Model performance is evaluated not merely on pixel-level MSE, but on aerodynamic
 
 1. **Relative $L_2$ Velocity Norm:**
    
-   $$ \epsilon_{L_2} = \frac{\|\mathbf{u}_{\text{true}} - \mathbf{u}_{\text{pred}}\|_2}{\|\mathbf{u}_{\text{true}}\|_2} $$
+```math
+\epsilon_{L_2} = \frac{\|\mathbf{u}_{\text{true}} - \mathbf{u}_{\text{pred}}\|_2}{\|\mathbf{u}_{\text{true}}\|_2}
+```
 
 2. **Vorticity Field RMSE ($\omega$):**
    
-   $$ \omega = \frac{\partial v}{\partial x} - \frac{\partial u}{\partial y}, \quad \text{RMSE}_\omega = \sqrt{\frac{1}{N} \sum (\omega_{\text{true}} - \omega_{\text{pred}})^2} $$
+```math
+\omega = \frac{\partial v}{\partial x} - \frac{\partial u}{\partial y}, \quad \text{RMSE}_\omega = \sqrt{\frac{1}{N} \sum (\omega_{\text{true}} - \omega_{\text{pred}})^2}
+```
 
 3. **Continuity Equation Divergence Residual:**
    
-   $$ \mathcal{R}_{\text{cont}} = \left\| \frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} \right\|_2 $$
+```math
+\mathcal{R}_{\text{cont}} = \left\| \frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} \right\|_2
+```
    
    Measures whether the reconstructed field respects physical mass conservation for incompressible flow.
 
