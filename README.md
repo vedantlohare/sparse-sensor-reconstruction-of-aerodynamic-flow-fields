@@ -40,9 +40,9 @@ This project evaluates sparse-sensor reconstruction on the open-source **CFDBenc
 - `v.npy`: Cross-stream velocity component, shape $(2000, 64, 64)$, `float64`.
 - `case.json`: Simulation metadata (inlet velocity $U_\infty$, fluid density $\rho$, dynamic viscosity $\mu$, cylinder radius, and boundary coordinates).
 
-#### How to Obtain the Open-Source CFDBench Dataset:
-For external researchers and evaluators wishing to download the complete 10+ GB raw benchmark:
-1. Access the open-source release via the [CFDBench Repository](https://github.com/lu-group/CFDBench) or associated open-access data archives.
+#### How to Obtain the Open-Source CFDBench Dataset (Required for Full Reproduction):
+Since the full 10+ GB dataset cannot be uploaded to GitHub due to size limits, you must download the raw dataset from its original open-source repository. This project specifically utilizes the cylinder wake dataset provided by:
+1. Access the open-source release via the [CFDBench Repository](https://github.com/luo-yining/CFDBench).
 2. Extract the cylinder wake case folders into your local workspace under:
    ```text
    vright_brothers_sparse_sensor/data/raw/cylinder/
