@@ -7,6 +7,20 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
 def build_poisson_solver(nx, ny, dx, dy):
+    """
+    Builds a sparse matrix representation of the 2D discrete Laplacian operator.
+    Used for solving the incompressible pressure-Poisson equation.
+    
+    Args:
+        nx (int): Number of grid points in x-direction.
+        ny (int): Number of grid points in y-direction.
+        dx (float): Grid spacing in x-direction.
+        dy (float): Grid spacing in y-direction.
+        
+    Returns:
+        solver: SciPy factorized sparse linear solver.
+        boundary_indices (list): List of 1D flattened indices corresponding to the domain boundaries.
+    """
     N = nx * ny
     main_diag = -2 * (1/dx**2 + 1/dy**2) * np.ones(N)
     off_diag_x = (1/dx**2) * np.ones(N-1)
@@ -39,6 +53,21 @@ def build_poisson_solver(nx, ny, dx, dy):
     return solver, boundary_indices
 
 def compute_pressure(u, v, dx, dy, solver, boundary_indices):
+    """
+    Derives the pressure field from the velocity field (u, v) by solving the 2D 
+    incompressible pressure-Poisson equation:
+        ∇²p = -ρ ∇·(u·∇u) = - ( (∂u/∂x)² + 2(∂u/∂y)(∂v/∂x) + (∂v/∂y)² )
+        
+    Args:
+        u (np.ndarray): Streamwise velocity field (ny, nx).
+        v (np.ndarray): Cross-stream velocity field (ny, nx).
+        dx, dy (float): Grid spacings.
+        solver: Pre-computed SciPy sparse solver for the Laplacian.
+        boundary_indices (list): Indices where Dirichlet BCs (p=0) are enforced.
+        
+    Returns:
+        p (np.ndarray): Derived pressure field of shape (ny, nx).
+    """
     du_dy, du_dx = np.gradient(u, dy, dx, edge_order=2)
     dv_dy, dv_dx = np.gradient(v, dy, dx, edge_order=2)
     
@@ -53,6 +82,17 @@ def compute_pressure(u, v, dx, dy, solver, boundary_indices):
     return p.reshape(u.shape)
 
 def preprocess_data(data_dir):
+    """
+    Preprocesses the raw CFDBench velocity fields for downstream ROM and SciML training.
+    
+    Pipeline Steps:
+    1. Loads raw 64x64 (u, v) fields.
+    2. Interpolates spatially to a 64x128 grid via PyTorch bicubic interpolation.
+    3. Derives the missing pressure channel (p) via Poisson equation.
+    4. Chronologically partitions data into Train (70%), Val (15%), Test (15%).
+    5. Normalizes all fields (z-score) using strictly training set statistics.
+    6. Saves output matrices into compressed .npz archives.
+    """
     data_path = os.path.join(data_dir, 'raw_snapshots.npz')
     if not os.path.exists(data_path):
         raise FileNotFoundError(f"Dataset not found at {data_path}. Run download_dataset.py first.")

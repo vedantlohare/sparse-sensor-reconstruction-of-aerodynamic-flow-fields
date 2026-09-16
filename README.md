@@ -290,10 +290,15 @@ python scripts/run_ablation_sweeps.py
 ---
 
 ### 5.4 Interactive Exploration via Jupyter
-To interactively inspect flow snapshots, sensor locations, and training dynamics:
+To interactively inspect the mathematical methods and flow visualizations without digging through the source code, open the walkthrough notebook:
 ```bash
 jupyter notebook notebooks/full_walkthrough.ipynb
 ```
+**What the notebook demonstrates:**
+- **Data Loading:** Inspecting the raw tensors and plotting initial flow fields.
+- **POD & SVD:** Performing Proper Orthogonal Decomposition and analyzing the cumulative energy spectrum graph (showing how 6 modes capture 95% of the energy).
+- **Q-DEIM Sensor Placement:** Calculating the optimal pivot points and plotting a highly visual contour map of the cylinder wake with exact sensor coordinates.
+- **Gappy POD Reconstruction:** Reconstructing the flow field from sparse measurements and calculating the baseline error.
 
 ---
 

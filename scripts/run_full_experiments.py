@@ -21,6 +21,15 @@ from src.evaluation.plotting import plot_reconstruction_comparison
 import argparse
 
 def main():
+    """
+    Main execution script for the Sparse-Sensor Reconstruction pipeline.
+    This script runs the entire workflow end-to-end:
+    1. Ingests or generates the dataset.
+    2. Preprocesses (interpolates, derives pressure, normalizes, splits).
+    3. Executes Classical ROM (POD + Q-DEIM + Gappy POD).
+    4. Executes Deep Learning SciML (SensorMLP).
+    5. Evaluates metrics and generates comparison plots.
+    """
     parser = argparse.ArgumentParser(description="Run Sparse-Sensor Reconstruction Pipeline")
     parser.add_argument('--case', type=str, default='case0001', 
                         help="Case directory name in data/raw/cylinder (e.g., case0001, case0042)")
@@ -41,6 +50,7 @@ def main():
     prep_data_train = os.path.join(data_dir, 'train.npz')
     
     # 1. Data Ingestion & Preprocessing
+    # If raw data isn't there, either parse CFDBench or generate a synthetic wake
     if not os.path.exists(raw_data_path):
         raw_dir = os.path.join(root_dir, 'data', 'raw', 'cylinder', args.case)
         if os.path.exists(raw_dir):
@@ -49,10 +59,12 @@ def main():
         else:
             generate_synthetic_wake_data(num_snapshots=1500, save_dir=data_dir)
         
+    # If preprocessed train.npz isn't there, run the preprocess step
     if not os.path.exists(prep_data_train):
         preprocess_data(data_dir)
         
     # 2. Load Preprocessed Data
+    # The arrays are normalized (z-score) based on training statistics
     print("\nLoading preprocessed dataset...")
     train_dataset = np.load(os.path.join(data_dir, 'train.npz'))
     val_dataset = np.load(os.path.join(data_dir, 'val.npz'))
