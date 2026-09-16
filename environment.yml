@@ -1,4 +1,4 @@
-name: vright_brothers_sciml
+name: sparse_sensor_env
 channels:
   - pytorch
   - nvidia

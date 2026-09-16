@@ -131,6 +131,28 @@ def main():
     for (p, e_gappy, e_mlp) in results:
         print(f"| {p} | {e_gappy*100:.2f} | {e_mlp*100:.2f} |")
         
+    # Generate and save ablation scaling plot
+    import matplotlib.pyplot as plt
+    ps = [r[0] for r in results]
+    err_g = [r[1]*100 for r in results]
+    err_m = [r[2]*100 for r in results]
+    
+    plt.figure(figsize=(8, 6))
+    plt.plot(ps, err_g, 'o--', label='Gappy POD', color='tab:orange', linewidth=2)
+    plt.plot(ps, err_m, 's-', label='SensorMLP', color='tab:blue', linewidth=2)
+    plt.xlabel('Number of Sensors (p)')
+    plt.ylabel('Relative $L_2$ Error (%)')
+    plt.title('Sensor Budget Ablation: Reconstruction Accuracy')
+    plt.xscale('log', base=2)
+    plt.xticks(ps, ps)
+    plt.grid(True, which="both", ls="-", alpha=0.5)
+    plt.legend()
+    plt.tight_layout()
+    ablation_plot_path = os.path.join(output_dir, 'ablation_sensor_scaling.png')
+    plt.savefig(ablation_plot_path, dpi=300)
+    plt.close()
+    print(f"\nSaved ablation plot to {ablation_plot_path}")
+        
     print("\nAblation sweeps completed successfully.")
 
 if __name__ == "__main__":

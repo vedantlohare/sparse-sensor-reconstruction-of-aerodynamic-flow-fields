@@ -112,10 +112,10 @@ def main():
     sensor_y = Y.flatten()[sensor_indices]
     
     # Save optimal sensor locations to output directory
-    sensor_save_npz = os.path.join(output_dir, 'optimal_sensors.npz')
+    sensor_save_npz = os.path.join(output_dir, f'sensor_locations_p{p}.npz')
     np.savez_compressed(sensor_save_npz, indices=sensor_indices, x=sensor_x, y=sensor_y)
     
-    sensor_save_csv = os.path.join(output_dir, 'optimal_sensors.csv')
+    sensor_save_csv = os.path.join(output_dir, f'sensor_locations_p{p}.csv')
     sensor_table = np.column_stack([np.arange(p), sensor_indices, sensor_x, sensor_y])
     np.savetxt(sensor_save_csv, sensor_table, delimiter=',', 
                header='sensor_id,spatial_index,x_coord,y_coord', fmt='%d,%d,%.6f,%.6f', comments='')
@@ -163,7 +163,24 @@ def main():
     criterion = PhysicsAwareLoss(nx=nx, ny=ny, C_channels=C, gamma1=0.1, gamma2=0.1)
     
     print("Training SensorMLP (100 epochs with early stopping patience=15)...")
-    model, _, _ = train_model(model, train_loader, val_loader, criterion, num_epochs=100, patience=15, lr=1e-3)
+    model, train_hist, val_hist = train_model(model, train_loader, val_loader, criterion, num_epochs=100, patience=15, lr=1e-3)
+    
+    # Save loss history plot
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(8, 5))
+    plt.plot(train_hist, label='Train Loss')
+    plt.plot(val_hist, label='Val Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.yscale('log')
+    plt.title('SensorMLP Training History')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    loss_plot_path = os.path.join(output_dir, 'loss_history.png')
+    plt.savefig(loss_plot_path, dpi=300)
+    plt.close()
+    print(f"Saved loss history to {loss_plot_path}")
     
     print("Evaluating SensorMLP on Test Set...")
     model.eval()
@@ -210,7 +227,7 @@ def main():
     # Visualization
     print("\nGenerating Reconstructions & Figures...")
     
-    plot_path = os.path.join(output_dir, f'reconstruction_panel_test_{idx}.png')
+    plot_path = os.path.join(output_dir, 'field_reconstruction.png')
     plot_reconstruction_comparison(X, Y, w_true, w_gappy, w_mlp, mask=cylinder_mask, 
                                    save_path=plot_path, title_var="Vorticity",
                                    sensor_coords=(sensor_x, sensor_y))

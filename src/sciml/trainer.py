@@ -14,8 +14,8 @@ def train_model(model, train_loader, val_loader, criterion, num_epochs=100,
         print("Training on CPU")
         
     model = model.to(device)
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
+    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
     
     best_val_loss = float('inf')
     best_model_weights = copy.deepcopy(model.state_dict())
@@ -66,7 +66,7 @@ def train_model(model, train_loader, val_loader, criterion, num_epochs=100,
         epoch_val_loss = running_val_loss / len(val_loader.dataset)
         val_history.append(epoch_val_loss)
         
-        scheduler.step(epoch_val_loss)
+        scheduler.step()
         
         if epoch_val_loss < best_val_loss:
             best_val_loss = epoch_val_loss

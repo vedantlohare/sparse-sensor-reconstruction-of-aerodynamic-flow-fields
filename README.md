@@ -237,7 +237,7 @@ sparse_sensor_reconstruction/
 #### Option A: Conda (Recommended for CUDA acceleration)
 ```bash
 conda env create -f environment.yml
-conda activate vright_brothers_sciml
+conda activate sparse_sensor_env
 ```
 
 #### Option B: Standard Pip (with CUDA 12.1 support)
@@ -256,7 +256,7 @@ pip install -r requirements.txt
 #### Workflow Option 1: Explicit 3-Step CFDBench Pipeline (Recommended for Research)
 If running directly on the full numerical CFDBench dataset:
 ```bash
-# 1. Ingest snapshots 500:2000 from case0001 (1,500 snapshots, C=2, N=8,192)
+# 1. Ingest snapshots 500:2000 from case0001 (1,500 snapshots, C=3, N=24,576)
 python data/download_dataset.py --raw_dir data/raw/cylinder/case0001
 
 # 2. Chronological 70/15/15 split (1050 train, 225 val, 225 test) with Z-score scaling

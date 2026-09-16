@@ -9,6 +9,9 @@ data/*.npz
 
 # Output
 output/
+!output/*.png
+!output/*.csv
+!output/*.npz
 
 # OS
 .DS_Store

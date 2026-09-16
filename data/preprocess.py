@@ -117,7 +117,38 @@ def preprocess_data(data_dir):
     dx = 10.0 / (nx - 1)
     dy = 6.0 / (ny - 1)
     
+    # Generate Grid and Mask for cylinder boundary conditions
+    x_grid = np.linspace(0, 10, nx)
+    y_grid = np.linspace(-3, 3, ny)
+    X, Y = np.meshgrid(x_grid, y_grid)
+    
+    cyl_x, cyl_y, cyl_r = 2.0, 0.0, 0.5
+    dist = np.sqrt((X - cyl_x)**2 + (Y - cyl_y)**2)
+    cylinder_mask = dist <= cyl_r
+    
     solver, boundary_indices = build_poisson_solver(nx, ny, dx, dy)
+    
+    # Add cylinder points to Dirichlet boundary indices
+    # This prevents spurious pressure spikes inside the solid body
+    cylinder_indices = np.where(cylinder_mask.flatten())[0]
+    boundary_indices.extend(cylinder_indices.tolist())
+    # Rebuild solver with updated boundary conditions
+    # (Extract the logic from build_poisson_solver)
+    N = nx * ny
+    main_diag = -2 * (1/dx**2 + 1/dy**2) * np.ones(N)
+    off_diag_x = (1/dx**2) * np.ones(N-1)
+    off_diag_y = (1/dy**2) * np.ones(N-nx)
+    off_diag_x[nx-1::nx] = 0
+    diagonals = [main_diag, off_diag_x, off_diag_x, off_diag_y, off_diag_y]
+    offsets = [0, 1, -1, nx, -nx]
+    L = sp.diags(diagonals, offsets, shape=(N, N), format='lil')
+    
+    for idx in boundary_indices:
+        L.rows[idx] = [idx]
+        L.data[idx] = [1.0]
+        
+    L = L.tocsc()
+    solver = spla.factorized(L)
     
     data_3c = np.zeros((M, 3, ny, nx), dtype=np.float32)
     data_3c[:, 0:2, :, :] = data_interp
@@ -134,14 +165,7 @@ def preprocess_data(data_dir):
     C = 3
     print(f"New Data shape (u, v, p): {data.shape}")
     
-    # 3. Regenerate Grid and Mask
-    x = np.linspace(0, 10, nx)
-    y = np.linspace(-3, 3, ny)
-    X, Y = np.meshgrid(x, y)
-    
-    cyl_x, cyl_y, cyl_r = 2.0, 0.0, 0.5
-    dist = np.sqrt((X - cyl_x)**2 + (Y - cyl_y)**2)
-    cylinder_mask = dist <= cyl_r
+    # (Grid already generated above)
     
     # 4. Chronological partition: 70% Train, 15% Val, 15% Test
     M_train = int(0.70 * M)
