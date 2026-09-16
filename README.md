@@ -232,14 +232,18 @@ sparse_sensor_reconstruction/
 
 ### 5.1 Environment Setup
 
+**Prerequisites for GPU Acceleration:** Ensure you have an NVIDIA GPU with updated drivers and the CUDA Toolkit installed on your system if you intend to run the models with CUDA acceleration. The code automatically falls back to CPU if no GPU is detected.
+
 #### Option A: Conda (Recommended for CUDA acceleration)
 ```bash
 conda env create -f environment.yml
 conda activate vright_brothers_sciml
 ```
 
-#### Option B: Standard Pip
+#### Option B: Standard Pip (with CUDA 12.1 support)
+If using `pip` on Windows/Linux, you must specify the PyTorch index URL to install the CUDA-enabled version of PyTorch:
 ```bash
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 pip install -r requirements.txt
 ```
 
@@ -353,7 +357,7 @@ The following table demonstrates the $L_2$ reconstruction error scaling as a fun
 
 **Key Observations:**
 - **Q-DEIM Sensor Efficiency:** Q-DEIM sensor placement successfully clusters sensors along the shear layers and wake centerline where vorticity gradients are steepest, providing an optimized linear basis for reconstruction.
-- **SciML Non-linear Superiority:** The deep `SensorMLP` uniformly outperforms the classical Gappy POD baseline across all budgets $p$. The MLP maintains excellent accuracy (~3.5% error) even in the highly sparse $p=4$ regime where classical methods diverge (28.47% error). Furthermore, the physics loss successfully constrains the network to respect mass conservation, outperforming the linear projection method on the continuity residual constraint.
+- **SciML Non-linear Superiority:** The deep `SensorMLP` uniformly outperforms the classical Gappy POD baseline across all budgets $p$. The MLP maintains excellent accuracy (~3.5% error) even in the highly sparse $p=4$ regime where classical methods diverge (28.47% error). Furthermore, the physics loss successfully constrains the network to respect mass conservation, slightly outperforming the linear projection method on the continuity residual constraint.
 
 ---
 

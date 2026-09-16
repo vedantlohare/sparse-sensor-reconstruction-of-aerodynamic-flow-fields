@@ -36,7 +36,7 @@ def main():
     args = parser.parse_args()
 
     print("="*80)
-    print("VRIGHT BROTHERS: Sparse-Sensor Reconstruction Pipeline")
+    print("Sparse-Sensor Reconstruction Pipeline")
     print(f"Targeting Dataset: {args.case}")
     print("="*80)
     
