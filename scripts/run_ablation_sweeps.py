@@ -57,8 +57,13 @@ def main():
     X_train_flat = data_train.reshape(M_train, N).T
     X_test_flat = data_test.reshape(M_test, N).T
     
+    # --- Mean-centering for Classical POD Pipeline ---
+    mean_flow = np.mean(X_train_flat, axis=1, keepdims=True)
+    X_train_fluct = X_train_flat - mean_flow
+    X_test_fluct = X_test_flat - mean_flow
+    
     print("\nComputing Thin SVD for POD extraction...")
-    Phi, S, r, cum_energy = compute_pod(X_train_flat, energy_threshold=0.95)
+    Phi, S, r, cum_energy = compute_pod(X_train_fluct, energy_threshold=0.95)
     
     p_values = [4, 8, 16, 32, 64, 128]
     print(f"Running sensor budget scaling law sweep for p in {p_values}...\n")
@@ -76,13 +81,19 @@ def main():
         N_spatial = ny * nx
         multi_channel_indices = np.concatenate([sensor_indices + c * N_spatial for c in range(C)])
         
-        # 2. Extract Measurements
-        y_s_test = X_test_flat[multi_channel_indices, :]  
+        # 2. Extract Measurements (from mean-centered fluctuations)
+        y_s_test_fluct = X_test_fluct[multi_channel_indices, :]  
         
         # 3. Gappy POD
         print(f"  [Gappy POD] Reconstructing...")
-        a_gappy, x_hat_gappy = gappy_pod_reconstruct(y_s_test, multi_channel_indices, Phi[:, :r], mu=1e-3)
+        a_gappy, x_hat_gappy_fluct = gappy_pod_reconstruct(y_s_test_fluct, multi_channel_indices, Phi[:, :r], mu=1e-3)
+        
+        # Add mean flow back to the reconstructed fluctuation field
+        x_hat_gappy = x_hat_gappy_fluct + mean_flow
         err_gappy = np.mean(relative_l2_error(X_test_flat.T, x_hat_gappy.T))
+        
+        # Original test measurements for MLP
+        y_s_test = X_test_flat[multi_channel_indices, :]
         
         # 4. SensorMLP Training
         print(f"  [SensorMLP] Training for 100 epochs (early stopping patience=15)...")

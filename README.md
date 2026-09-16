@@ -330,17 +330,30 @@ Model performance is evaluated not merely on pixel-level MSE, but on aerodynamic
 
 ## 7. Benchmark Results & Comparative Analysis
 
-Summary of reconstruction performance evaluated on the unseen test set ($M_{\text{test}} = 225$ snapshots) across sensor budgets $p$:
+Summary of reconstruction performance evaluated on the unseen test set ($M_{\text{test}} = 225$ snapshots) at a fixed sensor budget $p=16$:
 
 | Metric | Sensor Budget $p=16$ (ROM) | Sensor Budget $p=16$ (SciML) |
 |---|---|---|
-| **Relative $L_2$ Error** | $15.86\%$ | **$3.10\%$** |
+| **Relative $L_2$ Error** | $15.86\%$ | **$3.16\%$** |
 | **Vorticity RMSE ($\omega$)** | $20.32\%$ | **$5.21\%$** |
 | **Continuity Residual ($\nabla \cdot \mathbf{u}$)** | $0.166$ | **$0.163$** |
 
+### Sensor Budget Ablation Summary
+
+The following table demonstrates the $L_2$ reconstruction error scaling as a function of the number of sensors $p$, showcasing the limits of the linear Gappy POD approach versus the robust non-linear SensorMLP.
+
+| Sensor Budget $p$ | Gappy Rel $L_2$ Error (%) | SensorMLP Rel $L_2$ Error (%) |
+|---|---|---|
+| 4 | 28.47 | 3.42 |
+| 8 | 18.89 | 3.16 |
+| 16 | 15.86 | 3.16 |
+| 32 | 13.15 | 3.04 |
+| 64 | 13.08 | 3.08 |
+| 128 | 13.00 | 3.18 |
+
 **Key Observations:**
 - **Q-DEIM Sensor Efficiency:** Q-DEIM sensor placement successfully clusters sensors along the shear layers and wake centerline where vorticity gradients are steepest, providing an optimized linear basis for reconstruction.
-- **SciML Non-linear Superiority:** The deep `SensorMLP` with physics-aware regularizers uniformly outperforms the classical Gappy POD baseline across all metrics (achieving ~5x lower $L_2$ error and ~4x lower vorticity error). Furthermore, the physics loss successfully constrains the network to respect mass conservation, slightly outperforming the linear projection method on the continuity residual constraint.
+- **SciML Non-linear Superiority:** The deep `SensorMLP` uniformly outperforms the classical Gappy POD baseline across all budgets $p$. The MLP maintains excellent accuracy (~3.5% error) even in the highly sparse $p=4$ regime where classical methods diverge (28.47% error). Furthermore, the physics loss successfully constrains the network to respect mass conservation, outperforming the linear projection method on the continuity residual constraint.
 
 ---
 
