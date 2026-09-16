@@ -77,12 +77,17 @@ def main():
     X_train_flat = data_train.reshape(M_train, N).T
     X_test_flat = data_test.reshape(M_test, N).T
     
+    # --- Mean-centering for Classical POD Pipeline ---
+    mean_flow = np.mean(X_train_flat, axis=1, keepdims=True)
+    X_train_fluct = X_train_flat - mean_flow
+    X_test_fluct = X_test_flat - mean_flow
+    
     # 3. ROM: SVD and Q-DEIM
     print("\n" + "="*80)
     print("Executing Classical Baseline: Gappy POD & Q-DEIM")
     print("="*80)
     
-    Phi, S, r, cum_energy = compute_pod(X_train_flat, energy_threshold=0.95)
+    Phi, S, r, cum_energy = compute_pod(X_train_fluct, energy_threshold=0.95)
     
     # We will use p = 16 sensors
     p = 16
@@ -109,12 +114,15 @@ def main():
     N_spatial = ny * nx
     multi_channel_indices = np.concatenate([sensor_indices + c * N_spatial for c in range(C)])
     
-    # Extract test measurements
-    y_s_test = X_test_flat[multi_channel_indices, :]  # (C*p, M_test)
+    # Extract test measurements (from mean-centered fluctuations)
+    y_s_test_fluct = X_test_fluct[multi_channel_indices, :]  # (C*p, M_test)
     
     # Reconstruct using Gappy POD
     print(f"Reconstructing Test Set using Gappy POD...")
-    a_gappy, x_hat_gappy = gappy_pod_reconstruct(y_s_test, multi_channel_indices, Phi[:, :r], mu=1e-3)
+    a_gappy, x_hat_gappy_fluct = gappy_pod_reconstruct(y_s_test_fluct, multi_channel_indices, Phi[:, :r], mu=1e-3)
+    
+    # Add mean flow back to the reconstructed fluctuation field
+    x_hat_gappy = x_hat_gappy_fluct + mean_flow
     
     err_gappy = np.mean(relative_l2_error(X_test_flat.T, x_hat_gappy.T))
     print(f"--> Gappy POD Rel. L2 Error: {err_gappy*100:.2f}%")
@@ -147,6 +155,10 @@ def main():
     
     print("Evaluating SensorMLP on Test Set...")
     model.eval()
+    
+    # MLP uses original uncentered test measurements
+    y_s_test = X_test_flat[multi_channel_indices, :]
+    
     with torch.no_grad():
         tensor_y_test = torch.FloatTensor(y_s_test.T).to(device)
         x_hat_mlp = model(tensor_y_test).cpu().numpy()

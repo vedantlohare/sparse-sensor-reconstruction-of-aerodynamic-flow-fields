@@ -150,7 +150,7 @@ The neural network learns a non-linear surrogate mapping directly from sparse me
 \mathcal{F}_\theta: \mathbb{R}^{d_{\text{sens}}} \to \mathbb{R}^{N}
 ```
 
-- **Architecture:** $[2p] \to [256] \to [512] \to [1024] \to [N=24576]$
+- **Architecture:** $[C \times p] \to [128] \to [256] \to [512] \to [1024] \to [N=24576]$
 - **Activations:** GELU (Gaussian Error Linear Unit) with LayerNorm regularization to stabilize the internal covariate shift across layers.
 
 ### 3.5 Physics-Aware Multi-Objective Loss
@@ -325,17 +325,17 @@ Model performance is evaluated not merely on pixel-level MSE, but on aerodynamic
 
 ## 7. Benchmark Results & Comparative Analysis
 
-Summary of reconstruction performance evaluated on the unseen test set ($M_{\text{test}} = 150$ snapshots) across sensor budgets $p$:
+Summary of reconstruction performance evaluated on the unseen test set ($M_{\text{test}} = 225$ snapshots) across sensor budgets $p$:
 
 | Metric | Sensor Budget $p=16$ (ROM) | Sensor Budget $p=16$ (SciML) |
 |---|---|---|
-| **Relative $L_2$ Error** | $44.06\%$ | **$3.09\%$** |
-| **Vorticity RMSE ($\omega$)** | $48.78\%$ | **$4.86\%$** |
-| **Continuity Residual ($\nabla \cdot \mathbf{u}$)** | **$0.092$** | $0.163$ |
+| **Relative $L_2$ Error** | $15.86\%$ | **$3.10\%$** |
+| **Vorticity RMSE ($\omega$)** | $20.32\%$ | **$5.21\%$** |
+| **Continuity Residual ($\nabla \cdot \mathbf{u}$)** | $0.166$ | **$0.163$** |
 
 **Key Observations:**
-- **Q-DEIM Sensor Efficiency:** Q-DEIM sensor placement clusters sensors along the shear layers and wake centerline where vorticity gradients are steepest, drastically reducing condition numbers compared to uniform placement.
-- **SciML Non-linear Superiority:** Deep `SensorMLP` with physics-aware regularizers outperforms linear Gappy POD by $>50\%$ in low-sensor regimes ($p \le 16$), while maintaining physical fidelity and sharp vortex cores.
+- **Q-DEIM Sensor Efficiency:** Q-DEIM sensor placement successfully clusters sensors along the shear layers and wake centerline where vorticity gradients are steepest, providing an optimized linear basis for reconstruction.
+- **SciML Non-linear Superiority:** The deep `SensorMLP` with physics-aware regularizers uniformly outperforms the classical Gappy POD baseline across all metrics (achieving ~5x lower $L_2$ error and ~4x lower vorticity error). Furthermore, the physics loss successfully constrains the network to respect mass conservation, slightly outperforming the linear projection method on the continuity residual constraint.
 
 ---
 
