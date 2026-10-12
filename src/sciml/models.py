@@ -82,3 +82,33 @@ class DeepONet(nn.Module):
         # Shape: (batch_size, N_points)
         out = torch.matmul(branch_out, trunk_out.transpose(0, 1)) + self.bias
         return out
+
+class PODMLP(nn.Module):
+    """
+    Reduced-Order Latent-Space Neural Network.
+    Maps sparse sensor readings y (R^input_dim) to r POD expansion coefficients a in R^r.
+    The physical field is reconstructed via x_hat = mean_flow + Phi_r @ a.
+    Guarantees that reconstructions strictly adhere to the linear POD subspace.
+    """
+    def __init__(self, input_dim, r_modes, Phi_r, mean_flow):
+        super(PODMLP, self).__init__()
+        self.r_modes = r_modes
+        self.register_buffer('Phi_r', torch.FloatTensor(Phi_r)) # (N, r)
+        self.register_buffer('mean_flow', torch.FloatTensor(mean_flow).squeeze()) # (N,)
+        
+        self.network = nn.Sequential(
+            nn.Linear(input_dim, 128),
+            nn.LayerNorm(128),
+            nn.GELU(),
+            nn.Linear(128, 128),
+            nn.LayerNorm(128),
+            nn.GELU(),
+            nn.Linear(128, r_modes)
+        )
+        
+    def forward_coeffs(self, y):
+        return self.network(y) # (batch_size, r)
+        
+    def forward(self, y):
+        coeffs = self.network(y) # (batch_size, r)
+        return torch.matmul(coeffs, self.Phi_r.t()) + self.mean_flow
