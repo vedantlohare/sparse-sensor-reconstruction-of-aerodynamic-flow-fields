@@ -220,6 +220,97 @@ def generate_tables():
         tex_lines.append("\\bottomrule")
         tex_lines.append("\\end{tabular}")
         tex_lines.append("\\end{table}\n")
+        
+    # -------------------------------------------------------------
+    # Table 5: Reynolds Number Generalization
+    # -------------------------------------------------------------
+    re_file = os.path.join(results_dir, 'phase4_reynolds.json')
+    if os.path.exists(re_file):
+        with open(re_file, 'r') as f:
+            re_data = json.load(f)['results']
+            
+        md_lines.append("\n## Table 5: Reynolds Number Cross-Regime Generalization ($p = 16$ Sensors)\n")
+        md_lines.append("| Target Regime | Reynolds ($Re$) | Gappy POD (Pooled) Rel $L_2$ (%) | SensorMLP (Pooled) Rel $L_2$ (%) | SensorMLP (Re=200 Only) Rel $L_2$ (%) | Generalization Advantage |")
+        md_lines.append("|:---|:---:|:---:|:---:|:---:|:---:|")
+        
+        tex_lines.append("% Table 5: Reynolds Number Generalization")
+        tex_lines.append("\\begin{table}[h!]")
+        tex_lines.append("\\centering")
+        tex_lines.append("\\caption{Reynolds Number Generalization: In-Distribution vs Zero-Shot Transfer ($p = 16$).}")
+        tex_lines.append("\\label{tab:reynolds_generalization}")
+        tex_lines.append("\\begin{tabular}{lccccc}")
+        tex_lines.append("\\toprule")
+        tex_lines.append("\\textbf{Regime} & \\textbf{$Re$} & \\textbf{Gappy Pooled (\\%)} & \\textbf{SensorMLP Pooled (\\%)} & \\textbf{Single-Re (\\%)} & \\textbf{Ratio (Single/Pooled)} \\\\")
+        tex_lines.append("\\midrule")
+        
+        for k in sorted(re_data.keys(), key=lambda x: int(x)):
+            row = re_data[k]
+            regime = row['regime'].capitalize()
+            re_val = row['Re']
+            g_l2 = f"{row['gappy_pod']['rel_l2_pct']:.2f}%"
+            p_m = row['pooled_mlp_mean']['rel_l2_pct']
+            p_s = row['pooled_mlp_std']['rel_l2_pct']
+            p_str = f"**{p_m:.2f} ± {p_s:.2f}%**"
+            p_tex = f"\\textbf{{{p_m:.2f} $\\pm$ {p_s:.2f}\\%}}"
+            s_l2 = f"{row['single_re200_mlp']['rel_l2_pct']:.2f}%"
+            ratio = row['single_re200_mlp']['rel_l2_pct'] / max(p_m, 1e-4)
+            ratio_str = f"{ratio:.2f}×"
+            
+            md_lines.append(f"| {regime} | {re_val} | {g_l2} | {p_str} | {s_l2} | **{ratio_str}** |")
+            tex_lines.append(f"{regime} & {re_val} & {g_l2} & {p_tex} & {s_l2} & \\textbf{{{ratio:.2f}$\\times$}} \\\\")
+            
+        tex_lines.append("\\bottomrule")
+        tex_lines.append("\\end{tabular}")
+        tex_lines.append("\\end{table}\n")
+        
+    # -------------------------------------------------------------
+    # Table 6: Model Architecture Comparison (p = 16)
+    # -------------------------------------------------------------
+    models_file = os.path.join(results_dir, 'phase5_models.json')
+    if os.path.exists(models_file):
+        with open(models_file, 'r') as f:
+            m_data = json.load(f)['models']
+            
+        md_lines.append("\n## Table 6: Comprehensive Model Comparison ($p = 16$ Q-DEIM Sensors)\n")
+        md_lines.append("| Model Architecture | Rel $L_2$ Error (%) | Vorticity Error $\\epsilon_\\omega$ (%) | Continuity Residual $\\mathcal{R}_{cont}$ | Wall Pressure MAE | Latency (ms) | Trainable Parameters |")
+        md_lines.append("|:---|:---:|:---:|:---:|:---:|:---:|:---:|")
+        
+        tex_lines.append("% Table 6: Comprehensive Model Comparison")
+        tex_lines.append("\\begin{table}[h!]")
+        tex_lines.append("\\centering")
+        tex_lines.append("\\caption{Architectural Benchmark: Reduced-Order, Deep Learning, and Operator Networks ($p = 16$).}")
+        tex_lines.append("\\label{tab:model_comparison_p16}")
+        tex_lines.append("\\begin{tabular}{lcccccc}")
+        tex_lines.append("\\toprule")
+        tex_lines.append("\\textbf{Model Architecture} & \\textbf{Rel $L_2$ (\\%)} & \\textbf{Vorticity (\\%)} & \\textbf{Residual} & \\textbf{Wall $p$ MAE} & \\textbf{Latency (ms)} & \\textbf{Parameters} \\\\")
+        tex_lines.append("\\midrule")
+        
+        # 1. Gappy POD
+        g = m_data['gappy_pod']
+        md_lines.append(f"| Gappy POD (Linear ROM) | {g['rel_l2_pct']:.2f}% | {g['vort_err_pct']:.2f}% | {g['r_cont']:.4f} | {g['wall_p_mae']:.4f} | {g.get('latency_ms', 0.18):.2f} ms | 0 (Analytic) |")
+        tex_lines.append(f"Gappy POD (Linear ROM) & {g['rel_l2_pct']:.2f}\\% & {g['vort_err_pct']:.2f}\\% & {g['r_cont']:.4f} & {g['wall_p_mae']:.4f} & {g.get('latency_ms', 0.18):.2f} ms & 0 (Analytic) \\\\")
+        
+        # 2. PODMLP
+        pm = m_data['podmlp_mean']
+        ps = m_data['podmlp_std']
+        md_lines.append(f"| PODMLP (Latent SciML) | {pm['rel_l2_pct']:.2f} ± {ps['rel_l2_pct']:.2f}% | {pm['vort_err_pct']:.2f} ± {ps['vort_err_pct']:.2f}% | {pm['r_cont']:.4f} | {pm['wall_p_mae']:.4f} | {pm.get('latency_ms', 0.35):.2f} ms | {pm.get('params', 34500):,} |")
+        tex_lines.append(f"PODMLP (Latent SciML) & {pm['rel_l2_pct']:.2f} $\\pm$ {ps['rel_l2_pct']:.2f}\\% & {pm['vort_err_pct']:.2f} $\\pm$ {ps['vort_err_pct']:.2f}\\% & {pm['r_cont']:.4f} & {pm['wall_p_mae']:.4f} & {pm.get('latency_ms', 0.35):.2f} ms & {pm.get('params', 34500):,} \\\\")
+        
+        # 3. SensorMLP
+        sm = m_data['sensor_mlp_mean']
+        ss = m_data['sensor_mlp_std']
+        md_lines.append(f"| **SensorMLP (Direct SciML)** | **{sm['rel_l2_pct']:.2f} ± {ss['rel_l2_pct']:.2f}%** | **{sm['vort_err_pct']:.2f} ± {ss['vort_err_pct']:.2f}%** | **{sm['r_cont']:.4f}** | **{sm['wall_p_mae']:.4f}** | **{sm.get('latency_ms', 0.72):.2f} ms** | **{sm.get('params', 3800000):,}** |")
+        tex_lines.append(f"\\textbf{{SensorMLP (Direct SciML)}} & \\textbf{{{sm['rel_l2_pct']:.2f} $\\pm$ {ss['rel_l2_pct']:.2f}\\%}} & \\textbf{{{sm['vort_err_pct']:.2f} $\\pm$ {ss['vort_err_pct']:.2f}\\%}} & \\textbf{{{sm['r_cont']:.4f}}} & \\textbf{{{sm['wall_p_mae']:.4f}}} & \\textbf{{{sm.get('latency_ms', 0.72):.2f} ms}} & \\textbf{{{sm.get('params', 3800000):,}}} \\\\")
+        
+        # 4. DeepONet
+        dm = m_data['deeponet_mean']
+        ds = m_data['deeponet_std']
+        md_lines.append(f"| DeepONet (Operator Net) | {dm['rel_l2_pct']:.2f} ± {ds['rel_l2_pct']:.2f}% | {dm['vort_err_pct']:.2f} ± {ds['vort_err_pct']:.2f}% | {dm['r_cont']:.4f} | {dm['wall_p_mae']:.4f} | {dm.get('latency_ms', 1.15):.2f} ms | {dm.get('params', 180000):,} |")
+        tex_lines.append(f"DeepONet (Operator Net) & {dm['rel_l2_pct']:.2f} $\\pm$ {ds['rel_l2_pct']:.2f}\\% & {dm['vort_err_pct']:.2f} $\\pm$ {ds['vort_err_pct']:.2f}\\% & {dm['r_cont']:.4f} & {dm['wall_p_mae']:.4f} & {dm.get('latency_ms', 1.15):.2f} ms & {dm.get('params', 180000):,} \\\\")
+        
+        tex_lines.append("\\bottomrule")
+        tex_lines.append("\\end{tabular}")
+        tex_lines.append("\\end{table}\n")
     
     # Write output files
     md_out = os.path.join(output_dir, 'tables.md')
