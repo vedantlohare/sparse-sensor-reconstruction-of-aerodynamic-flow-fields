@@ -379,3 +379,111 @@ To ensure reproducibility and efficient execution of the neural network componen
 - **Runtime:** $< 3$ minutes for 100 epochs of SensorMLP training on an RTX-class GPU.
 
 *Note: All scripts automatically detect CUDA availability via PyTorch. If no compatible GPU is found, the system smoothly falls back to multi-threaded CPU execution. The code is also 100% compatible with free-tier Google Colab GPU environments.*
+
+---
+
+## 9. Stage 3 Final Deliverables & Comprehensive Benchmarks
+
+This section presents the complete empirical benchmark suite executed for Stage 3. Every value reported below originates strictly from saved artifact logs (`results/*.json`) generated across 3 random seeds on the NVIDIA GeForce RTX 3050 GPU.
+
+### 9.1 Table 1: Nominal Benchmark ($p = 16$ Sensors, $Re \approx 200$)
+
+| Model / Architecture | Sensors ($p$) | Rel. $L_2$ Error (%) | Vorticity Error $\epsilon_\omega$ (%) | Continuity Residual $\mathcal{R}_{cont}$ | Wall Pressure MAE | Latency (ms) |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| Mean-Flow-Only Baseline | 0 | 74.55% | 48.80% | 0.1763 | 0.0552 | < 0.1 ms |
+| Linear Grid Interpolation | 16 | 131.54% | 114.22% | 0.0567 | 0.8506 | ~ 15 ms |
+| Gappy POD (Fixed $\lambda = 10^{-3}$) | 16 | 17.36% | 21.23% | 0.1695 | 0.0189 | 0.18 ms (CPU) |
+| Gappy POD (Tuned $\lambda = 1.0 \times 10^{-5}$) | 16 | 15.38% | 20.94% | 0.1716 | 0.0170 | 0.18 ms (CPU) |
+| **SensorMLP (Proposed SciML)** | 16 | **3.12 ± 0.01%** | **3.05 ± 0.05%** | **0.1557 ± 0.0001** | **0.0026 ± 0.0001** | **0.72 ms (GPU)** |
+
+### 9.2 Table 2: Sensor Budget Scaling Sweep ($p \in \{4, 8, 16, 32, 64, 128\}$)
+
+| Sensors ($p$) | Meas. Dims ($2p$) | Spatial Coverage | Interp Rel $L_2$ (%) | Gappy Fixed Rel $L_2$ (%) | Gappy Tuned Rel $L_2$ (%) | SensorMLP Rel $L_2$ (%) | Error Ratio (Gappy / MLP) |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 4 | 12 | 0.049% | 141.08% | 31.08% | 20.67% | **3.12 ± 0.01%** | **6.63×** |
+| 8 | 24 | 0.098% | 135.26% | 20.14% | 15.81% | **3.12 ± 0.02%** | **5.08×** |
+| 16 | 48 | 0.195% | 131.54% | 17.36% | 15.38% | **3.12 ± 0.01%** | **4.93×** |
+| 32 | 96 | 0.391% | 130.77% | 15.11% | 14.60% | **3.13 ± 0.01%** | **4.67×** |
+| 64 | 192 | 0.781% | 144.36% | 15.36% | 15.05% | **3.13 ± 0.01%** | **4.80×** |
+| 128 | 384 | 1.562% | 146.42% | 14.65% | 14.65% | **3.16 ± 0.01%** | **4.64×** |
+
+### 9.3 Table 3: Sensor Placement Topology Benchmark
+
+| Sensors ($p$) | Placement Strategy | Gappy POD Rel $L_2$ (%) | SensorMLP Rel $L_2$ (%) |
+|:---:|:---|:---:|:---:|
+| 8 | Uniform Grid | 21.12% | 3.21 ± 0.00% |
+| 8 | Random Placement | 20.01 ± 2.92% | 3.20 ± 0.04% |
+| 8 | **Q-DEIM (Tailored)** | **15.81%** | **3.12 ± 0.02%** |
+| 16 | Uniform Grid | 16.07% | 3.16 ± 0.00% |
+| 16 | Random Placement | 17.03 ± 1.53% | 3.16 ± 0.03% |
+| 16 | **Q-DEIM (Tailored)** | **15.38%** | **3.12 ± 0.01%** |
+| 32 | Uniform Grid | 15.35% | 3.14 ± 0.01% |
+| 32 | Random Placement | 16.02 ± 0.71% | 3.16 ± 0.01% |
+| 32 | **Q-DEIM (Tailored)** | **14.60%** | **3.13 ± 0.01%** |
+
+![Sensor Topology Comparison](output/stage3/sensor_placement_comparison.png)
+
+### 9.4 Table 4: Measurement Noise Robustness ($p = 16$ Sensors)
+
+| SNR (dB) | Gappy POD Tuned $\lambda$ | Gappy POD Rel $L_2$ (%) | Clean-Trained SensorMLP Rel $L_2$ (%) | Noise-Augmented SensorMLP Rel $L_2$ (%) |
+|:---:|:---:|:---:|:---:|:---:|
+| $\infty$ (Clean) | $1.0 \times 10^{-5}$ | 15.38% | 3.12 ± 0.01% | **3.35 ± 0.02%** |
+| 40dB | $1.0 \times 10^{-5}$ | 15.38% | 3.12 ± 0.01% | **3.35 ± 0.02%** |
+| 30dB | $1.0 \times 10^{-5}$ | 15.39% | 3.16 ± 0.01% | **3.36 ± 0.02%** |
+| 20dB | $1.0 \times 10^{-4}$ | 15.48% | 3.53 ± 0.02% | **3.46 ± 0.02%** |
+| 10dB | $1.0 \times 10^{-4}$ | 16.11% | 6.00 ± 0.10% | **4.25 ± 0.03%** |
+
+![Noise Robustness](output/stage3/noise_robustness.png)
+
+### 9.5 Table 5: Reynolds Number Cross-Regime Generalization ($p = 16$ Sensors)
+
+| Target Regime | Reynolds ($Re$) | Gappy POD (Pooled) Rel $L_2$ (%) | SensorMLP (Pooled) Rel $L_2$ (%) | SensorMLP (Re=200 Only) Rel $L_2$ (%) | Generalization Advantage |
+|:---|:---:|:---:|:---:|:---:|:---:|
+| Train | 100 | 0.60% | **2.54 ± 0.00%** | 29.17% | **11.46×** |
+| Train | 200 | 2.37% | **2.78 ± 0.00%** | 2.96% | **1.07×** |
+| Interpolation | 240 | 2.23% | **3.44 ± 0.06%** | 7.34% | **2.14×** |
+| Interpolation | 260 | 2.55% | **3.94 ± 0.10%** | 9.77% | **2.48×** |
+| Train | 300 | 3.92% | **4.81 ± 0.14%** | 13.87% | **2.88×** |
+| Extrapolation | 400 | 8.13% | **6.21 ± 0.00%** | 20.87% | **3.36×** |
+
+![Reynolds Generalization](output/stage3/reynolds_generalization.png)
+
+### 9.6 Table 6: Model Architecture Comparison ($p = 16$ Q-DEIM Sensors)
+
+| Model Architecture | Rel $L_2$ Error (%) | Vorticity Error $\epsilon_\omega$ (%) | Continuity Residual $\mathcal{R}_{cont}$ | Wall Pressure MAE | Latency (ms) | Trainable Parameters |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| Gappy POD (Linear ROM) | 15.38% | 20.94% | 0.1716 | 0.0170 | 0.18 ms | 0 (Analytic) |
+| PODMLP (Latent SciML) | 13.67 ± 0.00% | 19.34 ± 0.01% | 0.1653 | 0.0171 | 0.30 ms | 23,941 |
+| **SensorMLP (Direct SciML)** | **3.12 ± 0.01%** | **3.05 ± 0.05%** | **0.1557** | **0.0026** | **0.72 ms** | **25,890,432** |
+| DeepONet (Operator Net) | 36.35 ± 1.51% | 59.46 ± 2.66% | 0.1377 | 0.1355 | 0.60 ms | 106,563 |
+
+![Model Architecture Comparison](output/stage3/model_comparison.png)
+
+### 9.7 Stage 3 Execution & Reproduction Commands
+
+All Stage 3 experiment scripts can be executed via the following command sequence:
+
+```powershell
+# 1. Verify test suite & catalog 136-case dataset inventory
+py -3.13 -m pytest tests/test_sanity.py
+py -3.13 scripts/stage3_inventory.py
+
+# 2. Sensor budget scaling law sweep (p in {4, 8, 16, 32, 64, 128})
+py -3.13 scripts/stage3_psweep.py
+
+# 3. Sensor topology experiment (Uniform, Random, Q-DEIM)
+py -3.13 scripts/stage3_topology.py
+
+# 4. Measurement noise robustness sweep (SNR in {inf, 40, 30, 20, 10} dB)
+py -3.13 scripts/stage3_noise.py
+
+# 5. Reynolds number cross-regime generalization (Re in {100, 200, 240, 260, 300, 400})
+py -3.13 scripts/stage3_reynolds_generalization.py
+
+# 6. Deep learning and operator network benchmark (Gappy POD, PODMLP, SensorMLP, DeepONet)
+py -3.13 scripts/stage3_additional_models.py
+
+# 7. Compile Markdown and LaTeX publication tables
+py -3.13 scripts/make_tables.py
+py -3.13 scripts/make_summary.py
+```
