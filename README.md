@@ -461,29 +461,45 @@ This section presents the complete empirical benchmark suite executed for Stage 
 
 ### 9.7 Stage 3 Execution & Reproduction Commands
 
-All Stage 3 experiment scripts can be executed via the following command sequence:
+All Stage 3 experiment scripts can be executed via standard Python commands in your activated environment:
 
-```powershell
+```bash
 # 1. Verify test suite & catalog 136-case dataset inventory
-py -3.13 -m pytest tests/test_sanity.py
-py -3.13 scripts/stage3_inventory.py
+python -m pytest tests/test_sanity.py
+python scripts/stage3_inventory.py
 
 # 2. Sensor budget scaling law sweep (p in {4, 8, 16, 32, 64, 128})
-py -3.13 scripts/stage3_psweep.py
+python scripts/stage3_psweep.py
 
 # 3. Sensor topology experiment (Uniform, Random, Q-DEIM)
-py -3.13 scripts/stage3_topology.py
+python scripts/stage3_topology.py
 
 # 4. Measurement noise robustness sweep (SNR in {inf, 40, 30, 20, 10} dB)
-py -3.13 scripts/stage3_noise.py
+python scripts/stage3_noise.py
 
 # 5. Reynolds number cross-regime generalization (Re in {100, 200, 240, 260, 300, 400})
-py -3.13 scripts/stage3_reynolds_generalization.py
+python scripts/stage3_reynolds_generalization.py
 
 # 6. Deep learning and operator network benchmark (Gappy POD, PODMLP, SensorMLP, DeepONet)
-py -3.13 scripts/stage3_additional_models.py
+python scripts/stage3_additional_models.py
 
 # 7. Compile Markdown and LaTeX publication tables
-py -3.13 scripts/make_tables.py
-py -3.13 scripts/make_summary.py
+python scripts/make_tables.py
+python scripts/make_summary.py
 ```
+
+> **Note on Interpreter Invocations:** Depending on your operating system or environment setup, replace `python` with `python3` (Linux/macOS) or `py -3.13` (Windows Python Launcher targeting Python 3.13).
+
+---
+
+### 9.8 Airfoil Generalization: NACA 0012 Benchmark Specification
+
+To evaluate transferability beyond circular bluff bodies to streamlined lifting geometries, the repository provides integration guidelines for the **NACA 0012 airfoil benchmark**:
+
+1. **Benchmark Datasets:**
+   - **AirfRANS Dataset (NeurIPS 2022):** 1,000 high-fidelity 2D incompressible RANS simulations around NACA 4- and 5-digit airfoils across $Re \in [2 \times 10^6, 6 \times 10^6]$ and angle of attack $\alpha \in [-5^\circ, 15^\circ]$. Installable via `pip install airfrans`.
+   - **Zenodo Airfoil CFD Database (DOI: `10.5281/zenodo.4106751`):** 2,600 RANS flow-field solutions around NACA 4-digit profiles at $Re = 3 \times 10^6$ and $\alpha = 10^\circ$.
+2. **Reconstruction Pipeline on Streamlined Bodies:**
+   - **Surface Pressure Tap Emulation:** In airfoil aerodynamics, sensors are typically restricted to surface pressure taps along the upper (suction) and lower (pressure) surfaces. Q-DEIM automatically identifies leading-edge stagnation and suction peak locations ($x/c \approx 0.05 - 0.25$) as highest-leverage observation pivots.
+   - **Wake Velocity Sensors:** Downstream wake-rake anemometers provide sparse velocity samples to reconstruct boundary-layer separation and wake defect profiles.
+
