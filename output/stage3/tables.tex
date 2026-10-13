@@ -1,0 +1,114 @@
+% Table 1: Nominal Benchmark (p = 16)
+\begin{table}[h!]
+\centering
+\caption{Quantitative Reconstruction Performance on Unseen Test Snapshots ($p = 16$ Sensors, $Re \approx 200$, 3 Seeds).}
+\label{tab:nominal_benchmark_p16}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Model / Architecture} & \textbf{Sensors ($p$)} & \textbf{Rel. $L_2$ (\%)} & \textbf{Vorticity $\epsilon_\omega$ (\%)} & \textbf{Residual $\mathcal{R}_{cont}$} & \textbf{Wall $p$ MAE} & \textbf{Latency (ms)} \\
+\midrule
+Mean-Flow-Only Baseline & 0 & 74.55\% & 48.80\% & 0.1763 & 0.0552 & $< 0.1$ ms \\
+Linear Grid Interpolation & 16 & 131.54\% & 114.22\% & 0.0567 & 0.8506 & $\sim 15$ ms \\
+Gappy POD (Fixed $\lambda = 10^{-3}$) & 16 & 17.36\% & 21.23\% & 0.1695 & 0.0189 & 0.18 ms \\
+Gappy POD (Tuned $\lambda = 1.0e-05$) & 16 & 15.38\% & 20.94\% & 0.1716 & 0.0170 & 0.18 ms \\
+\textbf{SensorMLP (Proposed SciML)} & 16 & \textbf{3.12 $\pm$ 0.01\%} & \textbf{3.05 $\pm$ 0.05\%} & \textbf{0.1557 $\pm$ 0.0001} & \textbf{0.0026 $\pm$ 0.0001} & \textbf{0.72 ms} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Table 2: Sensor Budget Scaling Sweep
+\begin{table}[h!]
+\centering
+\caption{Sensor Budget Scaling Law: Reconstruction Error Across Varying Sensor Counts ($p$).}
+\label{tab:sensor_scaling_sweep}
+\begin{tabular}{cccccccc}
+\toprule
+\textbf{$p$} & \textbf{Dims ($2p$)} & \textbf{Coverage} & \textbf{Interp (\%)} & \textbf{Gappy Fix (\%)} & \textbf{Gappy Tune (\%)} & \textbf{SensorMLP (\%)} & \textbf{Ratio (Gappy/MLP)} \\
+\midrule
+4 & 12 & 0.049% & 141.08% & 31.08% & 20.67% & \textbf{3.12 $\pm$ 0.01\%} & \textbf{6.63$\times$} \\
+8 & 24 & 0.098% & 135.26% & 20.14% & 15.81% & \textbf{3.12 $\pm$ 0.02\%} & \textbf{5.08$\times$} \\
+16 & 48 & 0.195% & 131.54% & 17.36% & 15.38% & \textbf{3.12 $\pm$ 0.01\%} & \textbf{4.93$\times$} \\
+32 & 96 & 0.391% & 130.77% & 15.11% & 14.60% & \textbf{3.13 $\pm$ 0.01\%} & \textbf{4.67$\times$} \\
+64 & 192 & 0.781% & 144.36% & 15.36% & 15.05% & \textbf{3.13 $\pm$ 0.01\%} & \textbf{4.80$\times$} \\
+128 & 384 & 1.562% & 146.42% & 14.65% & 14.65% & \textbf{3.16 $\pm$ 0.01\%} & \textbf{4.64$\times$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Table 3: Sensor Placement Comparison
+\begin{table}[h!]
+\centering
+\caption{Sensor Placement Comparison: Reconstruction Error across Placement Strategies.}
+\label{tab:sensor_placement_comparison}
+\begin{tabular}{cccc}
+\toprule
+\textbf{Sensors ($p$)} & \textbf{Strategy} & \textbf{Gappy POD Rel $L_2$ (\%)} & \textbf{SensorMLP Rel $L_2$ (\%)} \\
+\midrule
+8 & Uniform Grid & 21.12% & 3.21 $\pm$ 0.00\% \\
+8 & Random Placement & 20.01 $\pm$ 2.92\% & 3.20 $\pm$ 0.04\% \\
+8 & \textbf{Q-DEIM (Tailored)} & \textbf{15.81%} & \textbf{3.12 $\pm$ 0.02\%} \\
+\midrule
+16 & Uniform Grid & 16.07% & 3.16 $\pm$ 0.00\% \\
+16 & Random Placement & 17.03 $\pm$ 1.53\% & 3.16 $\pm$ 0.03\% \\
+16 & \textbf{Q-DEIM (Tailored)} & \textbf{15.38%} & \textbf{3.12 $\pm$ 0.01\%} \\
+\midrule
+32 & Uniform Grid & 15.35% & 3.14 $\pm$ 0.01\% \\
+32 & Random Placement & 16.02 $\pm$ 0.71\% & 3.16 $\pm$ 0.01\% \\
+32 & \textbf{Q-DEIM (Tailored)} & \textbf{14.60%} & \textbf{3.13 $\pm$ 0.01\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Table 4: Noise Robustness
+\begin{table}[h!]
+\centering
+\caption{Measurement Noise Robustness: Reconstruction Performance Across SNR Levels ($p = 16$).}
+\label{tab:noise_robustness}
+\begin{tabular}{ccccc}
+\toprule
+\textbf{SNR (dB)} & \textbf{Tuned $\lambda$} & \textbf{Gappy POD (\%)} & \textbf{Clean-Trained MLP (\%)} & \textbf{Noise-Augmented MLP (\%)} \\
+\midrule
+$\infty$ (Clean) & 1.0e-05 & 15.38% & 3.12 $\pm$ 0.01\% & \textbf{3.35 $\pm$ 0.02\%} \\
+40 dB & 1.0e-05 & 15.38% & 3.12 $\pm$ 0.01\% & \textbf{3.35 $\pm$ 0.02\%} \\
+30 dB & 1.0e-05 & 15.39% & 3.16 $\pm$ 0.01\% & \textbf{3.36 $\pm$ 0.02\%} \\
+20 dB & 1.0e-04 & 15.48% & 3.53 $\pm$ 0.02\% & \textbf{3.46 $\pm$ 0.02\%} \\
+10 dB & 1.0e-04 & 16.11% & 6.00 $\pm$ 0.10\% & \textbf{4.25 $\pm$ 0.03\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Table 5: Reynolds Number Generalization
+\begin{table}[h!]
+\centering
+\caption{Reynolds Number Generalization: In-Distribution vs Zero-Shot Transfer ($p = 16$).}
+\label{tab:reynolds_generalization}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Regime} & \textbf{$Re$} & \textbf{Gappy Pooled (\%)} & \textbf{SensorMLP Pooled (\%)} & \textbf{Single-Re (\%)} & \textbf{Ratio (Single/Pooled)} \\
+\midrule
+Train & 100 & 0.60% & \textbf{2.54 $\pm$ 0.00\%} & 29.17% & \textbf{11.46$\times$} \\
+Train & 200 & 2.37% & \textbf{2.78 $\pm$ 0.00\%} & 2.96% & \textbf{1.07$\times$} \\
+Interpolation & 240 & 2.23% & \textbf{3.44 $\pm$ 0.06\%} & 7.34% & \textbf{2.14$\times$} \\
+Interpolation & 260 & 2.55% & \textbf{3.94 $\pm$ 0.10\%} & 9.77% & \textbf{2.48$\times$} \\
+Train & 300 & 3.92% & \textbf{4.81 $\pm$ 0.14\%} & 13.87% & \textbf{2.88$\times$} \\
+Extrapolation & 400 & 8.13% & \textbf{6.21 $\pm$ 0.00\%} & 20.87% & \textbf{3.36$\times$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% Table 6: Comprehensive Model Comparison
+\begin{table}[h!]
+\centering
+\caption{Architectural Benchmark: Reduced-Order, Deep Learning, and Operator Networks ($p = 16$).}
+\label{tab:model_comparison_p16}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Model Architecture} & \textbf{Rel $L_2$ (\%)} & \textbf{Vorticity (\%)} & \textbf{Residual} & \textbf{Wall $p$ MAE} & \textbf{Latency (ms)} & \textbf{Parameters} \\
+\midrule
+Gappy POD (Linear ROM) & 15.38\% & 20.94\% & 0.1716 & 0.0170 & 0.18 ms & 0 (Analytic) \\
+PODMLP (Latent SciML) & 13.67 $\pm$ 0.00\% & 19.34 $\pm$ 0.01\% & 0.1653 & 0.0171 & 0.30 ms & 23,941 \\
+\textbf{SensorMLP (Direct SciML)} & \textbf{3.12 $\pm$ 0.01\%} & \textbf{3.05 $\pm$ 0.05\%} & \textbf{0.1557} & \textbf{0.0026} & \textbf{0.72 ms} & \textbf{25,890,432} \\
+DeepONet (Operator Net) & 36.35 $\pm$ 1.51\% & 59.46 $\pm$ 2.66\% & 0.1377 & 0.1355 & 0.60 ms & 106,563 \\
+\bottomrule
+\end{tabular}
+\end{table}

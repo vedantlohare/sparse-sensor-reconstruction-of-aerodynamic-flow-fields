@@ -1,0 +1,60 @@
+{
+  "experiment": "phase5_additional_models",
+  "device_name": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "wall_clock_seconds": 355.46,
+  "timestamp": "2026-10-14 03:52:02",
+  "p": 16,
+  "models": {
+    "gappy_pod": {
+      "rel_l2_pct": 15.37825729374443,
+      "vort_err_pct": 20.935568904927155,
+      "r_cont": 0.17164334876482146,
+      "wall_p_mae": 0.017032871580633036,
+      "latency_ms": 0.177,
+      "params": 0
+    },
+    "sensor_mlp_mean": {
+      "rel_l2_pct": 3.117368141810099,
+      "vort_err_pct": 3.051211436589559,
+      "r_cont": 0.15567484498023987,
+      "wall_p_mae": 0.002585913287475705,
+      "latency_ms": 0.723,
+      "params": 25890432
+    },
+    "sensor_mlp_std": {
+      "rel_l2_pct": 0.007495859324279717,
+      "vort_err_pct": 0.0513624533361791,
+      "r_cont": 7.866828763108914e-05,
+      "wall_p_mae": 5.001709977529335e-05
+    },
+    "podmlp_mean": {
+      "rel_l2_pct": 13.674267450968424,
+      "vort_err_pct": 19.338280995686848,
+      "r_cont": 0.16532568136850992,
+      "wall_p_mae": 0.01711982985337575,
+      "latency_ms": 0.303,
+      "params": 23941
+    },
+    "podmlp_std": {
+      "rel_l2_pct": 0.0009737671184343593,
+      "vort_err_pct": 0.0054460681821434575,
+      "r_cont": 7.927621414162645e-05,
+      "wall_p_mae": 1.2639628481450442e-05
+    },
+    "deeponet_mean": {
+      "rel_l2_pct": 36.34716669718424,
+      "vort_err_pct": 59.45780563354492,
+      "r_cont": 0.1376993308464686,
+      "wall_p_mae": 0.13548449923594794,
+      "latency_ms": 0.604,
+      "params": 106563,
+      "subsample_50pct_err": 36.36
+    },
+    "deeponet_std": {
+      "rel_l2_pct": 1.50890817516786,
+      "vort_err_pct": 2.66264174974803,
+      "r_cont": 0.0012568063457528125,
+      "wall_p_mae": 0.016333298829223776
+    }
+  }
+}

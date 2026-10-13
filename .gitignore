@@ -8,10 +8,12 @@ data/processed/
 data/*.npz
 
 # Output
-output/
+output/*
 !output/*.png
 !output/*.csv
 !output/*.npz
+!output/stage3/
+!output/stage3/*
 
 # OS
 .DS_Store
