@@ -1,0 +1,53 @@
+{
+  "experiment": "phase3_noise",
+  "device_name": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "wall_clock_seconds": 453.44,
+  "timestamp": "2026-10-14 03:39:37",
+  "results": {
+    "inf": {
+      "snr_db": null,
+      "gappy_tuned_lambda": 1e-05,
+      "gappy_rel_l2_pct": 15.38,
+      "clean_mlp_rel_l2_mean": 3.12,
+      "clean_mlp_rel_l2_std": 0.01,
+      "augmented_mlp_rel_l2_mean": 3.35,
+      "augmented_mlp_rel_l2_std": 0.02
+    },
+    "40dB": {
+      "snr_db": 40.0,
+      "gappy_tuned_lambda": 1e-05,
+      "gappy_rel_l2_pct": 15.38,
+      "clean_mlp_rel_l2_mean": 3.12,
+      "clean_mlp_rel_l2_std": 0.01,
+      "augmented_mlp_rel_l2_mean": 3.35,
+      "augmented_mlp_rel_l2_std": 0.02
+    },
+    "30dB": {
+      "snr_db": 30.0,
+      "gappy_tuned_lambda": 1e-05,
+      "gappy_rel_l2_pct": 15.39,
+      "clean_mlp_rel_l2_mean": 3.16,
+      "clean_mlp_rel_l2_std": 0.01,
+      "augmented_mlp_rel_l2_mean": 3.36,
+      "augmented_mlp_rel_l2_std": 0.02
+    },
+    "20dB": {
+      "snr_db": 20.0,
+      "gappy_tuned_lambda": 0.0001,
+      "gappy_rel_l2_pct": 15.48,
+      "clean_mlp_rel_l2_mean": 3.53,
+      "clean_mlp_rel_l2_std": 0.02,
+      "augmented_mlp_rel_l2_mean": 3.46,
+      "augmented_mlp_rel_l2_std": 0.02
+    },
+    "10dB": {
+      "snr_db": 10.0,
+      "gappy_tuned_lambda": 0.0001,
+      "gappy_rel_l2_pct": 16.11,
+      "clean_mlp_rel_l2_mean": 6.0,
+      "clean_mlp_rel_l2_std": 0.1,
+      "augmented_mlp_rel_l2_mean": 4.25,
+      "augmented_mlp_rel_l2_std": 0.03
+    }
+  }
+}
