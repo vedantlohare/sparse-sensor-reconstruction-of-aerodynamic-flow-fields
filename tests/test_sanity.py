@@ -147,3 +147,36 @@ def test_mean_added_back_after_gappy_pod():
     
     # Conversely, verify that without adding mean_flow back, it would be zero (failing the test)
     assert not np.allclose(x_hat_fluct, mean_flow, atol=1e-2), "Fluctuation must not equal mean flow"
+
+def test_stage3_model_architectures_forward():
+    """
+    Verifies that SensorMLP, PODMLP, and MultiChannelDeepONet instantiate and produce correct output shapes.
+    """
+    import torch
+    from src.sciml.models import SensorMLP, PODMLP, MultiChannelDeepONet
+    
+    batch_size = 4
+    input_dim = 32 # e.g. 16 sensors * 2 channels
+    N_pts = 100
+    N = 3 * N_pts
+    r_modes = 5
+    
+    # 1. SensorMLP
+    mlp = SensorMLP(input_dim=input_dim, N=N)
+    y = torch.randn(batch_size, input_dim)
+    out_mlp = mlp(y)
+    assert out_mlp.shape == (batch_size, N)
+    
+    # 2. PODMLP
+    Phi_r = np.random.randn(N, r_modes).astype(np.float32)
+    mean_flow = np.random.randn(N, 1).astype(np.float32)
+    podmlp = PODMLP(input_dim=input_dim, r_modes=r_modes, Phi_r=Phi_r, mean_flow=mean_flow)
+    out_pod = podmlp(y)
+    assert out_pod.shape == (batch_size, N)
+    
+    # 3. MultiChannelDeepONet
+    coords = torch.randn(N_pts, 2)
+    deeponet = MultiChannelDeepONet(input_dim=input_dim, q=16)
+    out_onet = deeponet(y, coords)
+    assert out_onet.shape == (batch_size, 3 * N_pts)
+

@@ -15,64 +15,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.rom.svd_pod import compute_pod
 from src.rom.qdeim import qdeim_sensor_placement
 from src.rom.gappy_pod import gappy_pod_reconstruct
-from src.sciml.models import SensorMLP, PODMLP
+from src.sciml.models import SensorMLP, PODMLP, MultiChannelDeepONet
 from src.sciml.loss import PhysicsAwareLoss
 from src.sciml.trainer import train_model
 from src.evaluation.metrics import relative_l2_error
 from scripts.stage3_psweep import compute_all_metrics, get_adjacent_ring_mask, tune_gappy_lambda, measure_latencies
-
-class MultiChannelDeepONet(nn.Module):
-    """
-    Multi-Channel Deep Operator Network.
-    Branch net maps sparse sensors y (R^input_dim) -> (3, q) latent vectors.
-    Trunk net maps continuous spatial coordinates (x, y) in R^2 -> q continuous basis modes.
-    Outputs: u, v, p fields via tensor dot product b_c @ t^T.
-    """
-    def __init__(self, input_dim, q=64):
-        super(MultiChannelDeepONet, self).__init__()
-        self.q = q
-        self.C_channels = 3
-        
-        # Branch network: input_dim -> 3 * q
-        self.branch_net = nn.Sequential(
-            nn.Linear(input_dim, 128),
-            nn.LayerNorm(128),
-            nn.GELU(),
-            nn.Linear(128, 256),
-            nn.LayerNorm(256),
-            nn.GELU(),
-            nn.Linear(256, 3 * q)
-        )
-        
-        # Trunk network: 2 coordinates (x, y) -> q basis features
-        self.trunk_net = nn.Sequential(
-            nn.Linear(2, 64),
-            nn.LayerNorm(64),
-            nn.GELU(),
-            nn.Linear(64, 128),
-            nn.LayerNorm(128),
-            nn.GELU(),
-            nn.Linear(128, q)
-        )
-        
-        self.bias = nn.Parameter(torch.zeros(3))
-        
-    def forward(self, y, coords):
-        """
-        y: (batch_size, input_dim)
-        coords: (N_pts, 2)
-        Returns: (batch_size, 3 * N_pts)
-        """
-        batch_size = y.shape[0]
-        N_pts = coords.shape[0]
-        
-        b = self.branch_net(y).view(batch_size, self.C_channels, self.q) # (batch, 3, q)
-        t = self.trunk_net(coords)                                       # (N_pts, q)
-        
-        # Tensor dot product over latent dimension q:
-        # out[batch, c, pt] = sum_k b[batch, c, k] * t[pt, k] + bias[c]
-        out = torch.einsum('bcq,nq->bcn', b, t) + self.bias.view(1, 3, 1) # (batch, 3, N_pts)
-        return out.reshape(batch_size, self.C_channels * N_pts)
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
