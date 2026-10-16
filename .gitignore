@@ -15,8 +15,9 @@ output/*
 !output/stage3/
 !output/stage3/*
 
-# OS
+# OS / Notebooks
 .DS_Store
+.ipynb_checkpoints/
 
 # Specific files ignored per request
 docs/PROJECT_GUIDE.md
