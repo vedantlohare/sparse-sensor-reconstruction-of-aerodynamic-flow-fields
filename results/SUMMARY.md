@@ -44,5 +44,14 @@ This document summarizes all experimental phases executed for the Stage 3 benchm
 - **SensorMLP (Direct SciML):** Rel $L_2 = 3.12 \pm 0.01\%$, Vorticity = 3.05%, Latency = 0.72 ms, Parameters = 25,890,432.
 - **DeepONet (Continuous Operator):** Rel $L_2 = 36.35 \pm 1.51\%$, 50% Mesh Subsample Error = 36.36%, Latency = 0.60 ms, Parameters = 106,563.
 
+### Phase 6: Transonic/Subsonic NACA 0012 Airfoil Benchmark (AirfRANS CFD)
+- **Data Source:** Genuine OpenFOAM RANS CFD solutions from the NeurIPS 2022 AirfRANS dataset ($Re \sim 10^6$, $\alpha \in [-5^\circ, 15^\circ]$).
+- **Sensor Physics:** Q-DEIM placed **13/16 sensors along the leading-edge suction peak** ($x/c \in [0, 0.35]$), mirroring physical wind tunnel surface pressure taps.
+- **Mean-Flow Baseline ($p=0$):** Rel $L_2 = 62.91\%$.
+- **Gappy POD (Linear ROM):** Rel $L_2 = 45.19\%$, Vorticity $\epsilon_\omega = 140.18\%$, Continuity $\mathcal{R}_{cont} = 289.1168$.
+- **PODMLP (Latent SciML):** Rel $L_2 = 62.90\%$, Vorticity $\epsilon_\omega = 99.86\%$, Continuity $\mathcal{R}_{cont} = 52.4314$.
+- **DeepONet (Continuous Operator):** Rel $L_2 = 68.56\%$, Vorticity $\epsilon_\omega = 219.93\%$, Continuity $\mathcal{R}_{cont} = 85.1604$.
+- **SensorMLP (Direct SciML):** Rel $L_2 = **81.79\%**, Vorticity $\epsilon_\omega = **99.42\%**, Continuity $\mathcal{R}_{cont} = **55.9995**.
+
 ### Master Quantitative Summary Table
-Refer to `output/stage3/tables.md` and `output/stage3/tables.tex` for publication-ready LaTeX tables corresponding to Tables 1 through 6.
+Refer to `output/stage3/tables.md` and `output/stage3/tables.tex` for publication-ready LaTeX tables corresponding to Tables 1 through 7.

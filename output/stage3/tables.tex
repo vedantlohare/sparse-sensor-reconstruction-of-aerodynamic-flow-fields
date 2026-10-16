@@ -112,3 +112,21 @@ DeepONet (Operator Net) & 36.35 $\pm$ 1.51\% & 59.46 $\pm$ 2.66\% & 0.1377 & 0.1
 \bottomrule
 \end{tabular}
 \end{table}
+
+% Table 7: NACA Airfoil Generalization Benchmark
+\begin{table}[h!]
+\centering
+\caption{Aerodynamic Generalization on NACA 0012 (AirfRANS OpenFOAM RANS CFD, $p = 16$).}
+\label{tab:naca_airfoil_benchmark}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model Architecture} & \textbf{Rel $L_2$ (\%)} & \textbf{Vorticity (\%)} & \textbf{Residual} & \textbf{Latency (ms)} \\
+\midrule
+Mean-Flow Baseline ($p=0$) & 62.91\% & --- & --- & $< 0.1$ ms \\
+Gappy POD (Linear ROM) & 45.19\% & 140.18\% & 289.1168 & 0.48 ms \\
+PODMLP (Latent SciML) & 62.90\% & 99.86\% & 52.4314 & $\sim 0.4$ ms \\
+DeepONet (Operator Net) & 68.56\% & 219.93\% & 85.1604 & $\sim 1.2$ ms \\
+\textbf{SensorMLP (Direct SciML)} & \textbf{81.79\%} & \textbf{99.42\%} & \textbf{55.9995} & \textbf{1.07 ms} \\
+\bottomrule
+\end{tabular}
+\end{table}

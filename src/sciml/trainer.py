@@ -54,16 +54,19 @@ def train_model(model, train_loader, val_loader, criterion, num_epochs=100,
         model.eval()
         running_val_loss = 0.0
         
-        with torch.no_grad():
-            for batch_y, batch_x in val_loader:
-                batch_y = batch_y.to(device)
-                batch_x = batch_x.to(device)
-                
-                preds = model(batch_y)
-                loss = criterion(preds, batch_x)
-                running_val_loss += loss.item() * batch_y.size(0)
-                
-        epoch_val_loss = running_val_loss / len(val_loader.dataset)
+        if val_loader is not None:
+            with torch.no_grad():
+                for batch_y, batch_x in val_loader:
+                    batch_y = batch_y.to(device)
+                    batch_x = batch_x.to(device)
+                    
+                    preds = model(batch_y)
+                    loss = criterion(preds, batch_x)
+                    running_val_loss += loss.item() * batch_y.size(0)
+                    
+            epoch_val_loss = running_val_loss / len(val_loader.dataset)
+        else:
+            epoch_val_loss = epoch_train_loss
         val_history.append(epoch_val_loss)
         
         scheduler.step()

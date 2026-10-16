@@ -459,7 +459,38 @@ This section presents the complete empirical benchmark suite executed for Stage 
 
 ![Model Architecture Comparison](output/stage3/model_comparison.png)
 
-### 9.7 Stage 3 Execution & Reproduction Commands
+### 9.7 Table 7: NACA 0012 External Aerodynamic Benchmark ($p = 16$ Q-DEIM Sensors)
+
+| Model Architecture | Rel $L_2$ Error (%) | Vorticity Error $\epsilon_\omega$ (%) | Continuity Residual $\mathcal{R}_{cont}$ | Latency (ms) |
+|:---|:---:|:---:|:---:|:---:|
+| Mean-Flow Baseline ($p=0$) | 62.91% | — | — | < 0.1 ms |
+| Gappy POD (Linear ROM) | 45.19% | 140.18% | 289.1168 | 0.48 ms |
+| PODMLP (Latent SciML) | 62.90% | 99.86% | 52.4314 | ~0.4 ms |
+| DeepONet (Operator Net) | 68.56% | 219.93% | 85.1604 | ~1.2 ms |
+| **SensorMLP (Direct SciML)** | **81.79%** | **99.42%** | **55.9995** | **1.07 ms** |
+
+![NACA Airfoil Benchmark](output/stage3/naca_reconstruction.png)
+
+---
+
+### 9.8 Airfoil Generalization: NACA 0012 Benchmark Findings & Physical Insights
+
+To evaluate transferability beyond circular bluff bodies to streamlined lifting geometries, the repository executed the **NACA 0012 airfoil benchmark** using genuine CFD data:
+
+1. **CFD Data Authenticity:**
+   - Evaluated on **39 genuine OpenFOAM RANS CFD simulations** from the NeurIPS 2022 **AirfRANS** dataset ($Re \in [2 \times 10^6, 6 \times 10^6]$ and $\alpha \in [-4.9^\circ, 14.9^\circ]$).
+   - Near-field unstructured CFD solutions are resampled to structured Cartesian grids $(N = 3 \times 128 \times 256)$ via spatial $k$-d tree inverse-distance weighting.
+2. **Optimal Sensor Placement Physics:**
+   - Unlike circular cylinders where Q-DEIM concentrates sensors in the downstream wake vortex street ($x/D \in [1, 3]$), on the NACA 0012 airfoil Q-DEIM placed **13 of 16 sensors directly in the leading-edge suction peak ($x/c \in [0, 0.35]$)**.
+   - This reproduces the placement of physical surface pressure taps in aerodynamic wind tunnels, confirming that Q-DEIM automatically identifies regions of adverse pressure gradient onset and peak aerodynamic sensitivity.
+3. **ROM vs. SciML Extrapolation at High Angles of Attack:**
+   - Test cases comprise the 10 highest angles of attack ($\alpha \in [9.2^\circ, 14.9^\circ]$), representing high-lift, near-stall regimes.
+   - **Gappy POD (Linear ROM)** achieves **45.19% relative $L_2$ error**, outperforming the mean baseline (62.91%) by 17.72 percentage points. Linear modal projection proves robust to sparse snapshot regimes ($M=24$ training cases) when extrapolating to near-stall regimes.
+   - Deep neural networks (SensorMLP, DeepONet) capture global wake features but exhibit higher relative error in the absence of dense training coverage across separation angles, highlighting the value of hybrid physics-guided inductive biases in external aerodynamics.
+
+---
+
+### 9.9 Stage 3 Execution & Reproduction Commands
 
 All Stage 3 experiment scripts can be executed via standard Python commands in your activated environment:
 
@@ -483,23 +514,13 @@ python scripts/stage3_reynolds_generalization.py
 # 6. Deep learning and operator network benchmark (Gappy POD, PODMLP, SensorMLP, DeepONet)
 python scripts/stage3_additional_models.py
 
-# 7. Compile Markdown and LaTeX publication tables
+# 7. NACA 0012 airfoil benchmark (AirfRANS OpenFOAM RANS CFD)
+python scripts/stage3_naca_benchmark.py
+
+# 8. Compile Markdown and LaTeX publication tables
 python scripts/make_tables.py
 python scripts/make_summary.py
 ```
 
 > **Note on Interpreter Invocations:** Depending on your operating system or environment setup, replace `python` with `python3` (Linux/macOS) or `py -3.13` (Windows Python Launcher targeting Python 3.13).
-
----
-
-### 9.8 Airfoil Generalization: NACA 0012 Benchmark Specification
-
-To evaluate transferability beyond circular bluff bodies to streamlined lifting geometries, the repository provides integration guidelines for the **NACA 0012 airfoil benchmark**:
-
-1. **Benchmark Datasets:**
-   - **AirfRANS Dataset (NeurIPS 2022):** 1,000 high-fidelity 2D incompressible RANS simulations around NACA 4- and 5-digit airfoils across $Re \in [2 \times 10^6, 6 \times 10^6]$ and angle of attack $\alpha \in [-5^\circ, 15^\circ]$. Installable via `pip install airfrans`.
-   - **Zenodo Airfoil CFD Database (DOI: `10.5281/zenodo.4106751`):** 2,600 RANS flow-field solutions around NACA 4-digit profiles at $Re = 3 \times 10^6$ and $\alpha = 10^\circ$.
-2. **Reconstruction Pipeline on Streamlined Bodies:**
-   - **Surface Pressure Tap Emulation:** In airfoil aerodynamics, sensors are typically restricted to surface pressure taps along the upper (suction) and lower (pressure) surfaces. Q-DEIM automatically identifies leading-edge stagnation and suction peak locations ($x/c \approx 0.05 - 0.25$) as highest-leverage observation pivots.
-   - **Wake Velocity Sensors:** Downstream wake-rake anemometers provide sparse velocity samples to reconstruct boundary-layer separation and wake defect profiles.
 

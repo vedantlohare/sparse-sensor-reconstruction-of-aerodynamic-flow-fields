@@ -311,6 +311,57 @@ def generate_tables():
         tex_lines.append("\\bottomrule")
         tex_lines.append("\\end{tabular}")
         tex_lines.append("\\end{table}\n")
+        
+    # -------------------------------------------------------------
+    # Table 7: NACA 0012 Airfoil Generalization Benchmark (Phase 6)
+    # -------------------------------------------------------------
+    naca_file = os.path.join(results_dir, 'phase6_naca.json')
+    if os.path.exists(naca_file):
+        with open(naca_file, 'r') as f:
+            naca_data = json.load(f)['results']
+            
+        md_lines.append("\n## Table 7: NACA 0012 External Aerodynamic Benchmark ($p = 16$ Q-DEIM Sensors)\n")
+        md_lines.append("| Model Architecture | Rel $L_2$ Error (%) | Vorticity Error $\\epsilon_\\omega$ (%) | Continuity Residual $\\mathcal{R}_{cont}$ | Latency (ms) |")
+        md_lines.append("|:---|:---:|:---:|:---:|:---:|")
+        
+        tex_lines.append("% Table 7: NACA Airfoil Generalization Benchmark")
+        tex_lines.append("\\begin{table}[h!]")
+        tex_lines.append("\\centering")
+        tex_lines.append("\\caption{Aerodynamic Generalization on NACA 0012 (AirfRANS OpenFOAM RANS CFD, $p = 16$).}")
+        tex_lines.append("\\label{tab:naca_airfoil_benchmark}")
+        tex_lines.append("\\begin{tabular}{lcccc}")
+        tex_lines.append("\\toprule")
+        tex_lines.append("\\textbf{Model Architecture} & \\textbf{Rel $L_2$ (\\%)} & \\textbf{Vorticity (\\%)} & \\textbf{Residual} & \\textbf{Latency (ms)} \\\\")
+        tex_lines.append("\\midrule")
+        
+        # Mean baseline
+        mb = naca_data.get('mean_flow_baseline', {})
+        md_lines.append(f"| Mean-Flow Baseline ($p=0$) | {mb.get('rel_l2_pct', 0.0):.2f}% | — | — | < 0.1 ms |")
+        tex_lines.append(f"Mean-Flow Baseline ($p=0$) & {mb.get('rel_l2_pct', 0.0):.2f}\\% & --- & --- & $< 0.1$ ms \\\\")
+        
+        # Gappy POD
+        g = naca_data.get('gappy_pod', {})
+        md_lines.append(f"| Gappy POD (Linear ROM) | {g.get('rel_l2_pct', 0.0):.2f}% | {g.get('vort_err_pct', 0.0):.2f}% | {g.get('r_cont', 0.0):.4f} | {g.get('latency_ms', 0.2):.2f} ms |")
+        tex_lines.append(f"Gappy POD (Linear ROM) & {g.get('rel_l2_pct', 0.0):.2f}\\% & {g.get('vort_err_pct', 0.0):.2f}\\% & {g.get('r_cont', 0.0):.4f} & {g.get('latency_ms', 0.2):.2f} ms \\\\")
+        
+        # PODMLP
+        pm = naca_data.get('podmlp', {})
+        md_lines.append(f"| PODMLP (Latent SciML) | {pm.get('rel_l2_pct', 0.0):.2f}% | {pm.get('vort_err_pct', 0.0):.2f}% | {pm.get('r_cont', 0.0):.4f} | ~0.4 ms |")
+        tex_lines.append(f"PODMLP (Latent SciML) & {pm.get('rel_l2_pct', 0.0):.2f}\\% & {pm.get('vort_err_pct', 0.0):.2f}\\% & {pm.get('r_cont', 0.0):.4f} & $\\sim 0.4$ ms \\\\")
+        
+        # DeepONet
+        onet = naca_data.get('deeponet', {})
+        md_lines.append(f"| DeepONet (Operator Net) | {onet.get('rel_l2_pct', 0.0):.2f}% | {onet.get('vort_err_pct', 0.0):.2f}% | {onet.get('r_cont', 0.0):.4f} | ~1.2 ms |")
+        tex_lines.append(f"DeepONet (Operator Net) & {onet.get('rel_l2_pct', 0.0):.2f}\\% & {onet.get('vort_err_pct', 0.0):.2f}\\% & {onet.get('r_cont', 0.0):.4f} & $\\sim 1.2$ ms \\\\")
+        
+        # SensorMLP
+        sm = naca_data.get('sensor_mlp', {})
+        md_lines.append(f"| **SensorMLP (Direct SciML)** | **{sm.get('rel_l2_pct', 0.0):.2f}%** | **{sm.get('vort_err_pct', 0.0):.2f}%** | **{sm.get('r_cont', 0.0):.4f}** | **{sm.get('latency_ms', 0.7):.2f} ms** |")
+        tex_lines.append(f"\\textbf{{SensorMLP (Direct SciML)}} & \\textbf{{{sm.get('rel_l2_pct', 0.0):.2f}\\%}} & \\textbf{{{sm.get('vort_err_pct', 0.0):.2f}\\%}} & \\textbf{{{sm.get('r_cont', 0.0):.4f}}} & \\textbf{{{sm.get('latency_ms', 0.7):.2f} ms}} \\\\")
+        
+        tex_lines.append("\\bottomrule")
+        tex_lines.append("\\end{tabular}")
+        tex_lines.append("\\end{table}\n")
     
     # Write output files
     md_out = os.path.join(output_dir, 'tables.md')

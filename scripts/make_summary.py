@@ -77,8 +77,23 @@ def generate_summary():
     lines.append(f"- **SensorMLP (Direct SciML):** Rel $L_2 = {m_p5['sensor_mlp_mean']['rel_l2_pct']:.2f} \\pm {m_p5['sensor_mlp_std']['rel_l2_pct']:.2f}\\%$, Vorticity = {m_p5['sensor_mlp_mean']['vort_err_pct']:.2f}%, Latency = {m_p5['sensor_mlp_mean']['latency_ms']:.2f} ms, Parameters = {m_p5['sensor_mlp_mean']['params']:,}.")
     lines.append(f"- **DeepONet (Continuous Operator):** Rel $L_2 = {m_p5['deeponet_mean']['rel_l2_pct']:.2f} \\pm {m_p5['deeponet_std']['rel_l2_pct']:.2f}\\%$, 50% Mesh Subsample Error = {m_p5['deeponet_mean']['subsample_50pct_err']:.2f}%, Latency = {m_p5['deeponet_mean']['latency_ms']:.2f} ms, Parameters = {m_p5['deeponet_mean']['params']:,}.\n")
     
+    # Phase 6
+    p6_path = os.path.join(results_dir, 'phase6_naca.json')
+    if os.path.exists(p6_path):
+        with open(p6_path) as f:
+            p6 = json.load(f)
+        p6_r = p6['results']
+        lines.append("### Phase 6: Transonic/Subsonic NACA 0012 Airfoil Benchmark (AirfRANS CFD)")
+        lines.append(f"- **Data Source:** Genuine OpenFOAM RANS CFD solutions from the NeurIPS 2022 AirfRANS dataset ($Re \\sim 10^6$, $\\alpha \\in [-5^\\circ, 15^\\circ]$).")
+        lines.append(f"- **Sensor Physics:** Q-DEIM placed **{p6['suction_peak_sensors']}/{p6['p']} sensors along the leading-edge suction peak** ($x/c \\in [0, 0.35]$), mirroring physical wind tunnel surface pressure taps.")
+        lines.append(f"- **Mean-Flow Baseline ($p=0$):** Rel $L_2 = {p6_r['mean_flow_baseline']['rel_l2_pct']:.2f}\\%$.")
+        lines.append(f"- **Gappy POD (Linear ROM):** Rel $L_2 = {p6_r['gappy_pod']['rel_l2_pct']:.2f}\\%$, Vorticity $\\epsilon_\\omega = {p6_r['gappy_pod']['vort_err_pct']:.2f}\\%$, Continuity $\\mathcal{{R}}_{{cont}} = {p6_r['gappy_pod']['r_cont']:.4f}$.")
+        lines.append(f"- **PODMLP (Latent SciML):** Rel $L_2 = {p6_r['podmlp']['rel_l2_pct']:.2f}\\%$, Vorticity $\\epsilon_\\omega = {p6_r['podmlp']['vort_err_pct']:.2f}\\%$, Continuity $\\mathcal{{R}}_{{cont}} = {p6_r['podmlp']['r_cont']:.4f}$.")
+        lines.append(f"- **DeepONet (Continuous Operator):** Rel $L_2 = {p6_r['deeponet']['rel_l2_pct']:.2f}\\%$, Vorticity $\\epsilon_\\omega = {p6_r['deeponet']['vort_err_pct']:.2f}\\%$, Continuity $\\mathcal{{R}}_{{cont}} = {p6_r['deeponet']['r_cont']:.4f}$.")
+        lines.append(f"- **SensorMLP (Direct SciML):** Rel $L_2 = **{p6_r['sensor_mlp']['rel_l2_pct']:.2f}\\%**, Vorticity $\\epsilon_\\omega = **{p6_r['sensor_mlp']['vort_err_pct']:.2f}\\%**, Continuity $\\mathcal{{R}}_{{cont}} = **{p6_r['sensor_mlp']['r_cont']:.4f}**.\n")
+
     lines.append("### Master Quantitative Summary Table")
-    lines.append("Refer to `output/stage3/tables.md` and `output/stage3/tables.tex` for publication-ready LaTeX tables corresponding to Tables 1 through 6.")
+    lines.append("Refer to `output/stage3/tables.md` and `output/stage3/tables.tex` for publication-ready LaTeX tables corresponding to Tables 1 through 7.")
     
     summary_path = os.path.join(results_dir, 'SUMMARY.md')
     with open(summary_path, 'w', encoding='utf-8') as f:

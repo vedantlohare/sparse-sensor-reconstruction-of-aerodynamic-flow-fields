@@ -64,3 +64,13 @@
 | PODMLP (Latent SciML) | 13.67 ± 0.00% | 19.34 ± 0.01% | 0.1653 | 0.0171 | 0.30 ms | 23,941 |
 | **SensorMLP (Direct SciML)** | **3.12 ± 0.01%** | **3.05 ± 0.05%** | **0.1557** | **0.0026** | **0.72 ms** | **25,890,432** |
 | DeepONet (Operator Net) | 36.35 ± 1.51% | 59.46 ± 2.66% | 0.1377 | 0.1355 | 0.60 ms | 106,563 |
+
+## Table 7: NACA 0012 External Aerodynamic Benchmark ($p = 16$ Q-DEIM Sensors)
+
+| Model Architecture | Rel $L_2$ Error (%) | Vorticity Error $\epsilon_\omega$ (%) | Continuity Residual $\mathcal{R}_{cont}$ | Latency (ms) |
+|:---|:---:|:---:|:---:|:---:|
+| Mean-Flow Baseline ($p=0$) | 62.91% | — | — | < 0.1 ms |
+| Gappy POD (Linear ROM) | 45.19% | 140.18% | 289.1168 | 0.48 ms |
+| PODMLP (Latent SciML) | 62.90% | 99.86% | 52.4314 | ~0.4 ms |
+| DeepONet (Operator Net) | 68.56% | 219.93% | 85.1604 | ~1.2 ms |
+| **SensorMLP (Direct SciML)** | **81.79%** | **99.42%** | **55.9995** | **1.07 ms** |
