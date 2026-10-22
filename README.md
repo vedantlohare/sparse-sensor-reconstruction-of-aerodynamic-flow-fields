@@ -391,23 +391,50 @@ This section presents the complete empirical benchmark suite executed for Stage 
 | Model / Architecture | Sensors ($p$) | Rel. $L_2$ Error (%) | Vorticity Error $\epsilon_\omega$ (%) | Continuity Residual $\mathcal{R}_{cont}$ | Wall Pressure MAE | Latency (ms) |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
 | Mean-Flow-Only Baseline | 0 | 74.55% | 48.80% | 0.1763 | 0.0552 | < 0.1 ms |
-| Linear Grid Interpolation | 16 | 131.54% | 114.22% | 0.0567 | 0.8506 | ~ 15 ms |
-| Gappy POD (Fixed $\lambda = 10^{-3}$) | 16 | 17.36% | 21.23% | 0.1695 | 0.0189 | 0.18 ms (CPU) |
-| Gappy POD (Tuned $\lambda = 1.0 \times 10^{-5}$) | 16 | 15.38% | 20.94% | 0.1716 | 0.0170 | 0.18 ms (CPU) |
+| Linear Grid Interpolation (Raw) | 16 | 131.54% | 114.22% | 0.0567 | 0.8506 | ~ 15 ms |
+| Gappy POD ($r=5$, Fixed $\lambda = 10^{-3}$) | 16 | 17.36% | 21.23% | 0.1695 | 0.0189 | 0.18 ms (CPU) |
+| Gappy POD ($r=5$, Tuned $\lambda = 1.0 \times 10^{-5}$) | 16 | 15.38% | 20.94% | 0.1716 | 0.0170 | 0.18 ms (CPU) |
 | **SensorMLP (Proposed SciML)** | 16 | **3.12 ± 0.01%** | **3.05 ± 0.05%** | **0.1557 ± 0.0001** | **0.0026 ± 0.0001** | **0.72 ms (GPU)** |
+
+---
 
 ### 9.2 Table 2: Sensor Budget Scaling Sweep ($p \in \{4, 8, 16, 32, 64, 128\}$)
 
-| Sensors ($p$) | Meas. Dims ($2p$) | Spatial Coverage | Interp Rel $L_2$ (%) | Gappy Fixed Rel $L_2$ (%) | Gappy Tuned Rel $L_2$ (%) | SensorMLP Rel $L_2$ (%) | Error Ratio (Gappy / MLP) |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| 4 | 12 | 0.049% | 141.08% | 31.08% | 20.67% | **3.12 ± 0.01%** | **6.63×** |
-| 8 | 24 | 0.098% | 135.26% | 20.14% | 15.81% | **3.12 ± 0.02%** | **5.08×** |
-| 16 | 48 | 0.195% | 131.54% | 17.36% | 15.38% | **3.12 ± 0.01%** | **4.93×** |
-| 32 | 96 | 0.391% | 130.77% | 15.11% | 14.60% | **3.13 ± 0.01%** | **4.67×** |
-| 64 | 192 | 0.781% | 144.36% | 15.36% | 15.05% | **3.13 ± 0.01%** | **4.80×** |
-| 128 | 384 | 1.562% | 146.42% | 14.65% | 14.65% | **3.16 ± 0.01%** | **4.64×** |
+Each physical sensor measures $u, v$, and $p$, providing $3p$ measurement dimensions.
 
-### 9.3 Table 3: Sensor Placement Topology Benchmark
+| Sensors ($p$) | Meas. Dims ($3p$) | Spatial Coverage | Gappy Fixed ($r=5$) Rel $L_2$ (%) | Gappy Tuned ($r=5$) Rel $L_2$ (%) | SensorMLP Rel $L_2$ (%) | Error Ratio (Gappy / MLP) |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 4 | 12 | 0.049% | 31.08% | 20.67% | **3.12 ± 0.01%** | **6.63×** |
+| 8 | 24 | 0.098% | 20.14% | 15.81% | **3.12 ± 0.02%** | **5.08×** |
+| 16 | 48 | 0.195% | 17.36% | 15.38% | **3.12 ± 0.01%** | **4.93×** |
+| 32 | 96 | 0.391% | 15.11% | 14.60% | **3.13 ± 0.01%** | **4.67×** |
+| 64 | 192 | 0.781% | 15.36% | 15.05% | **3.13 ± 0.01%** | **4.80×** |
+| 128 | 384 | 1.562% | 14.65% | 14.65% | **3.16 ± 0.01%** | **4.64×** |
+
+> **Why SensorMLP Error is ~3.1% Across $p \in [4, 128]$:** In a steady limit-cycle Karman vortex street ($Re=200$), the wake trajectory lies on a low-dimensional periodic orbit in phase space. Even as few as $p=4$ sensors placed in the shear layer provide sufficient phase information to disambiguate the vortex cycle. With 25.9M parameters, SensorMLP maps this phase directly to the corresponding snapshot. Adding more sensors past $p=4$ yields diminishing returns because phase uncertainty is already resolved.
+
+---
+
+### 9.3 Table 2B: Gappy POD Modal Rank Sweep ($Re \approx 200$)
+
+To investigate whether the ~15% Gappy POD floor was caused by mathematical limitations or modal truncation ($r=5$, 95% energy), we performed a systematic rank sweep across $r \in \{6, 10, 20, 40\}$ at $p=16$ and $p=32$:
+
+| Sensors ($p$) | Modal Rank ($r$) | Energy (%) | Truncation Floor (%) | Gappy POD Rel $L_2$ (%) | Condition $\kappa(\mathbf{\Theta})$ | Tuned $\lambda$ | SensorMLP Rel $L_2$ (%) |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 16 | 6 | 96.72% | 12.65% | 14.43% | 2.1 | 0 | 3.12 ± 0.01% |
+| 16 | 10 | 98.61% | 8.01% | 10.94% | 2.6 | 0 | 3.12 ± 0.01% |
+| 16 | 20 | 99.71% | 3.80% | 8.72% | 11.0 | 0 | 3.12 ± 0.01% |
+| 16 | 40 | 99.97% | 1.45% | 10.14% | 271.5 | $10^{-6}$ | 3.12 ± 0.01% |
+| 32 | 6 | 96.72% | 12.65% | 13.77% | 1.9 | 0 | 3.13 ± 0.01% |
+| 32 | 10 | 98.61% | 8.01% | 9.78% | 2.4 | 0 | 3.13 ± 0.01% |
+| 32 | 20 | 99.71% | 3.80% | 5.23% | 4.3 | 0 | 3.13 ± 0.01% |
+| 32 | 40 | 99.97% | 1.45% | **2.86%** | 20.7 | $10^{-5}$ | 3.13 ± 0.01% |
+
+> **Key Takeaway:** The ~15% floor was indeed a truncation artifact of $r=5$. When given sufficient modal rank ($r=40$, 99.97% energy) and an adequate sensor budget ($p=32$, 96 measurement channels), **Gappy POD achieves 2.86% relative $L_2$ error, outperforming SensorMLP (3.13%)** in 0.18 ms latency with zero training parameters. At $p=16$, ill-conditioning ($\kappa = 271.5$) limits Gappy POD to 8.72% at $r=20$.
+
+---
+
+### 9.4 Table 3: Sensor Placement Topology Benchmark
 
 | Sensors ($p$) | Placement Strategy | Gappy POD Rel $L_2$ (%) | SensorMLP Rel $L_2$ (%) |
 |:---:|:---|:---:|:---:|
@@ -423,32 +450,44 @@ This section presents the complete empirical benchmark suite executed for Stage 
 
 ![Sensor Topology Comparison](output/stage3/sensor_placement_comparison.png)
 
-### 9.4 Table 4: Measurement Noise Robustness ($p = 16$ Sensors)
+---
 
-| SNR (dB) | Gappy POD Tuned $\lambda$ | Gappy POD Rel $L_2$ (%) | Clean-Trained SensorMLP Rel $L_2$ (%) | Noise-Augmented SensorMLP Rel $L_2$ (%) |
-|:---:|:---:|:---:|:---:|:---:|
-| $\infty$ (Clean) | $1.0 \times 10^{-5}$ | 15.38% | 3.12 ± 0.01% | **3.35 ± 0.02%** |
-| 40dB | $1.0 \times 10^{-5}$ | 15.38% | 3.12 ± 0.01% | **3.35 ± 0.02%** |
-| 30dB | $1.0 \times 10^{-5}$ | 15.39% | 3.16 ± 0.01% | **3.36 ± 0.02%** |
-| 20dB | $1.0 \times 10^{-4}$ | 15.48% | 3.53 ± 0.02% | **3.46 ± 0.02%** |
-| 10dB | $1.0 \times 10^{-4}$ | 16.11% | 6.00 ± 0.10% | **4.25 ± 0.03%** |
+### 9.5 Table 4: Measurement Noise Robustness ($p = 16$ Sensors)
+
+| SNR (dB) | Gappy POD Tuned $\lambda$ | Gappy POD Rel $L_2$ (%) | Clean-Trained SensorMLP Rel $L_2$ (%) | Noise-Augmented SensorMLP Rel $L_2$ (%) | Behavior / Dynamics |
+|:---:|:---:|:---:|:---:|:---:|:---|
+| $\infty$ (Clean) | $1.0 \times 10^{-5}$ | 15.38% | 3.12 ± 0.01% | **3.35 ± 0.02%** | Nominal baseline |
+| 40dB | $1.0 \times 10^{-5}$ | 15.38% | 3.12 ± 0.01% | **3.35 ± 0.02%** | Negligible degradation |
+| 30dB | $1.0 \times 10^{-5}$ | 15.39% | 3.16 ± 0.01% | **3.36 ± 0.02%** | High stability |
+| 20dB | $1.0 \times 10^{-4}$ | 15.48% | 3.53 ± 0.02% | **3.46 ± 0.02%** | Clean MLP begins degrading |
+| 10dB | $1.0 \times 10^{-4}$ | 16.11% | 6.00 ± 0.10% | **4.25 ± 0.03%** | Tikhonov suppresses noise (+0.73%), Clean MLP degrades 2× |
 
 ![Noise Robustness](output/stage3/noise_robustness.png)
 
-### 9.5 Table 5: Reynolds Number Cross-Regime Generalization ($p = 16$ Sensors)
+> **Noise Dynamics:** Gappy POD does **not** amplify noise; optimal Tikhonov regularization ($\lambda = 10^{-4}$) keeps its error exceptionally flat (rising by only 0.73 percentage points from clean to 10 dB). In contrast, clean-trained SensorMLP degrades by nearly 2× (3.12% to 6.00%). Noise-augmented training mitigates this (achieving 4.25% at 10 dB), but incurs a slight clean-data penalty (3.35% vs 3.12%).
 
-| Target Regime | Reynolds ($Re$) | Gappy POD (Pooled) Rel $L_2$ (%) | SensorMLP (Pooled) Rel $L_2$ (%) | SensorMLP (Re=200 Only) Rel $L_2$ (%) | Generalization Advantage |
+---
+
+### 9.6 Table 5: Reynolds Number Cross-Regime Generalization ($p = 16$ Sensors)
+
+A pooled multi-regime library ($Re \in \{100, 200, 300\}$) was evaluated on both in-distribution and unseen test regimes:
+
+| Target Regime | Reynolds ($Re$) | Pooled Gappy POD Rel $L_2$ (%) | Pooled SensorMLP Rel $L_2$ (%) | Generalization Comparison | Single-$Re$ ($Re=200$) MLP (%) |
 |:---|:---:|:---:|:---:|:---:|:---:|
-| Train | 100 | 0.60% | **2.54 ± 0.00%** | 29.17% | **11.46×** |
-| Train | 200 | 2.37% | **2.78 ± 0.00%** | 2.96% | **1.07×** |
-| Interpolation | 240 | 2.23% | **3.44 ± 0.06%** | 7.34% | **2.14×** |
-| Interpolation | 260 | 2.55% | **3.94 ± 0.10%** | 9.77% | **2.48×** |
-| Train | 300 | 3.92% | **4.81 ± 0.14%** | 13.87% | **2.88×** |
-| Extrapolation | 400 | 8.13% | **6.21 ± 0.00%** | 20.87% | **3.36×** |
+| Train | 100 | **0.60%** | 2.54 ± 0.00% | Gappy POD (4.23× better) | 29.17% |
+| Train | 200 | **2.37%** | 2.78 ± 0.00% | Gappy POD (1.17× better) | 2.96% |
+| Interpolation | 240 | **2.23%** | 3.44 ± 0.06% | Gappy POD (1.54× better) | 7.34% |
+| Interpolation | 260 | **2.55%** | 3.94 ± 0.10% | Gappy POD (1.54× better) | 9.77% |
+| Train | 300 | **3.92%** | 4.81 ± 0.14% | Gappy POD (1.23× better) | 13.87% |
+| Extrapolation | 400 | 8.13% | **6.21 ± 0.00%** | **SensorMLP (1.31× better)** | 20.87% |
 
 ![Reynolds Generalization](output/stage3/reynolds_generalization.png)
 
-### 9.6 Table 6: Model Architecture Comparison ($p = 16$ Q-DEIM Sensors)
+> **Physical Interpretation:** Linear modal interpolation via Gappy POD across a pooled multi-Reynolds library is remarkably effective inside the convex hull ($Re \in [100, 300]$), achieving 0.60%–3.92% error and consistently outperforming the neural network. SensorMLP demonstrates its superior non-linear representational advantage strictly during out-of-distribution extrapolation ($Re = 400$, 6.21% vs 8.13%), where flow dynamics depart from the training modal subspace.
+
+---
+
+### 9.7 Table 6: Model Architecture Comparison ($p = 16$ Q-DEIM Sensors)
 
 | Model Architecture | Rel $L_2$ Error (%) | Vorticity Error $\epsilon_\omega$ (%) | Continuity Residual $\mathcal{R}_{cont}$ | Wall Pressure MAE | Latency (ms) | Trainable Parameters |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -459,68 +498,69 @@ This section presents the complete empirical benchmark suite executed for Stage 
 
 ![Model Architecture Comparison](output/stage3/model_comparison.png)
 
-### 9.7 Table 7: NACA 0012 External Aerodynamic Benchmark ($p = 16$ Q-DEIM Sensors)
-
-| Model Architecture | Rel $L_2$ Error (%) | Vorticity Error $\epsilon_\omega$ (%) | Continuity Residual $\mathcal{R}_{cont}$ | Latency (ms) |
-|:---|:---:|:---:|:---:|:---:|
-| Mean-Flow Baseline ($p=0$) | 62.91% | — | — | < 0.1 ms |
-| Gappy POD (Linear ROM) | 45.19% | 140.18% | 289.1168 | 0.48 ms |
-| PODMLP (Latent SciML) | 62.90% | 99.86% | 52.4314 | ~0.4 ms |
-| DeepONet (Operator Net) | 68.56% | 219.93% | 85.1604 | ~1.2 ms |
-| **SensorMLP (Direct SciML)** | **81.79%** | **99.42%** | **55.9995** | **1.07 ms** |
-
-![NACA Airfoil Benchmark](output/stage3/naca_reconstruction.png)
+> **Understanding DeepONet Performance:** MultiChannelDeepONet exhibits higher error (36.35%) due to:
+> 1. **Model Parameter Disparity:** 106k parameters vs 25.9M in SensorMLP.
+> 2. **Bilinear Separation Bottleneck:** Outputting fields as $\sum_{k=1}^q b_k(y) t_k(x)$ enforces a low-rank separation of variables that struggles to resolve localized, high-gradient shear layers without spatial convolutions or Fourier feature trunk embeddings.
+> 3. **Subsampling Identity:** Evaluating DeepONet on a 50% subsampled grid yields the exact same relative error (36.35%) because discrete relative $L_2$ error approximates the continuous functional $L_2$ norm; this reflects grid-invariant evaluation, not spatial generalization.
 
 ---
 
-### 9.8 Airfoil Generalization: NACA 0012 Benchmark Findings & Physical Insights
+### 9.8 Table 7: AirfRANS Incompressible Airfoils Benchmark ($p = 16$ Q-DEIM Sensors)
 
-To evaluate transferability beyond circular bluff bodies to streamlined lifting geometries, the repository executed the **NACA 0012 airfoil benchmark** using genuine CFD data:
+Evaluated on **39 genuine OpenFOAM incompressible RANS CFD simulations** from the NeurIPS 2022 **AirfRANS** dataset ($Re \sim 2-6 \times 10^6$, $\alpha \in [-4.9^\circ, 14.9^\circ]$) across various NACA 4- and 5-digit airfoils on a $64 \times 128$ Cartesian grid. The test set comprises the highest 25% of AoA ($\alpha \in [9.2^\circ, 14.9^\circ]$), representing pure near-stall extrapolation from 24 training cases (5 validation):
 
-1. **CFD Data Authenticity:**
-   - Evaluated on **39 genuine OpenFOAM RANS CFD simulations** from the NeurIPS 2022 **AirfRANS** dataset ($Re \in [2 \times 10^6, 6 \times 10^6]$ and $\alpha \in [-4.9^\circ, 14.9^\circ]$).
-   - Near-field unstructured CFD solutions are resampled to structured Cartesian grids $(N = 3 \times 128 \times 256)$ via spatial $k$-d tree inverse-distance weighting.
-2. **Optimal Sensor Placement Physics:**
-   - Unlike circular cylinders where Q-DEIM concentrates sensors in the downstream wake vortex street ($x/D \in [1, 3]$), on the NACA 0012 airfoil Q-DEIM placed **13 of 16 sensors directly in the leading-edge suction peak ($x/c \in [0, 0.35]$)**.
-   - This reproduces the placement of physical surface pressure taps in aerodynamic wind tunnels, confirming that Q-DEIM automatically identifies regions of adverse pressure gradient onset and peak aerodynamic sensitivity.
-3. **ROM vs. SciML Extrapolation at High Angles of Attack:**
-   - Test cases comprise the 10 highest angles of attack ($\alpha \in [9.2^\circ, 14.9^\circ]$), representing high-lift, near-stall regimes.
-   - **Gappy POD (Linear ROM)** achieves **45.19% relative $L_2$ error**, outperforming the mean baseline (62.91%) by 17.72 percentage points. Linear modal projection proves robust to sparse snapshot regimes ($M=24$ training cases) when extrapolating to near-stall regimes.
-   - Deep neural networks (SensorMLP, DeepONet) capture global wake features but exhibit higher relative error in the absence of dense training coverage across separation angles, highlighting the value of hybrid physics-guided inductive biases in external aerodynamics.
+| Model Architecture | Rel $L_2$ Error (%) | Vorticity Error $\epsilon_\omega$ (%) | Continuity Residual $\mathcal{R}_{cont}$ | Latency (ms) | Generalization Status |
+|:---|:---:|:---:|:---:|:---:|:---|
+| Mean-Flow Baseline ($p=0$) | 62.91% | — | — | < 0.1 ms | Reference Baseline |
+| **Gappy POD (Linear ROM)** | **45.19%** | 140.18% | 289.12 | 0.48 ms | **Sole model beating baseline (-17.7%)** |
+| PODMLP (Latent SciML) | 62.90% | 99.86% | 52.43 | ~0.40 ms | Matches mean baseline |
+| DeepONet (Operator Net) | 68.56% | 219.93% | 85.16 | ~1.20 ms | Fails baseline (+5.7% error) |
+| SensorMLP (Direct SciML) | 81.79% | 99.42% | 56.00 | 1.07 ms | Fails baseline (+18.9% error) |
+
+![Airfoil Benchmark](output/stage3/naca_reconstruction.png)
+
+> **Key Aerodynamic Takeaways:**
+> 1. **Sensor Placement Physics:** Q-DEIM automatically placed **13 of 16 sensors along the leading-edge suction peak ($x/c \in [0, 0.35]$)**, mirroring physical surface pressure taps in aerodynamic wind tunnels.
+> 2. **Near-Stall Extrapolation:** Gappy POD is the **only method that outperforms the mean-flow baseline** (45.19% vs 62.91%). With only 24 training cases, direct neural regression over-smoothes the intense suction peak when extrapolating into separated, near-stall regimes.
+> 3. **Continuity Residual:** Finite-difference divergence on immersed body Cartesian grids produces boundary derivative spikes (289 for Gappy POD), reflecting grid discretization artifacts at solid boundaries.
 
 ---
 
 ### 9.9 Stage 3 Execution & Reproduction Commands
 
-All Stage 3 experiment scripts can be executed via standard Python commands in your activated environment:
+All experiment scripts run out-of-the-box with automatic GPU acceleration:
 
 ```bash
-# 1. Verify test suite & catalog 136-case dataset inventory
+# 1. Verify unit test suite & catalog 136-case dataset inventory
 python -m pytest tests/test_sanity.py
 python scripts/stage3_inventory.py
 
 # 2. Sensor budget scaling law sweep (p in {4, 8, 16, 32, 64, 128})
 python scripts/stage3_psweep.py
 
-# 3. Sensor topology experiment (Uniform, Random, Q-DEIM)
+# 3. Gappy POD modal rank sweep (r in {6, 10, 20, 40} at p in {16, 32})
+python scripts/stage3_rank_sweep.py
+
+# 4. Sensor topology experiment (Uniform, Random, Q-DEIM)
 python scripts/stage3_topology.py
 
-# 4. Measurement noise robustness sweep (SNR in {inf, 40, 30, 20, 10} dB)
+# 5. Measurement noise robustness sweep (SNR in {inf, 40, 30, 20, 10} dB)
 python scripts/stage3_noise.py
 
-# 5. Reynolds number cross-regime generalization (Re in {100, 200, 240, 260, 300, 400})
+# 6. Reynolds number cross-regime generalization (Re in {100, 200, 240, 260, 300, 400})
 python scripts/stage3_reynolds_generalization.py
 
-# 6. Deep learning and operator network benchmark (Gappy POD, PODMLP, SensorMLP, DeepONet)
+# 7. Model architecture benchmark (Gappy POD, PODMLP, SensorMLP, DeepONet)
 python scripts/stage3_additional_models.py
 
-# 7. NACA 0012 airfoil benchmark (AirfRANS OpenFOAM RANS CFD)
-python scripts/stage3_naca_benchmark.py
+# 8. AirfRANS incompressible airfoils benchmark (with auto-download fallback)
+python scripts/stage3_naca_benchmark.py --download
 
-# 8. Compile Markdown and LaTeX publication tables
+# 9. Compile Markdown and LaTeX publication tables
 python scripts/make_tables.py
 python scripts/make_summary.py
 ```
 
 > **Note on Interpreter Invocations:** Depending on your operating system or environment setup, replace `python` with `python3` (Linux/macOS) or `py -3.13` (Windows Python Launcher targeting Python 3.13).
+
 

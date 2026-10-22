@@ -180,3 +180,20 @@ def test_stage3_model_architectures_forward():
     out_onet = deeponet(y, coords)
     assert out_onet.shape == (batch_size, 3 * N_pts)
 
+def test_gappy_pod_rank_regularization():
+    """
+    Verifies that Gappy POD with r >= p executes stably when Tikhonov regularizer mu > 0 is provided.
+    """
+    np.random.seed(42)
+    N = 300
+    r = 20
+    p = 16
+    Phi_r, _ = np.linalg.qr(np.random.randn(N, r))
+    sensor_indices = np.arange(p)
+    y_fluct = np.random.randn(p, 5)
+    
+    a_hat, x_hat = gappy_pod_reconstruct(y_fluct, sensor_indices, Phi_r, mu=1e-4)
+    assert a_hat.shape == (r, 5)
+    assert x_hat.shape == (N, 5)
+    assert not np.isnan(x_hat).any()
+

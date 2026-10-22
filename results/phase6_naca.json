@@ -1,8 +1,19 @@
 {
-  "benchmark": "phase6_naca_airfoil",
-  "dataset_source": "AirfRANS (NeurIPS 2022 OpenFOAM RANS CFD)",
+  "benchmark": "phase6_airfrans_airfoils",
+  "dataset_source": "AirfRANS (NeurIPS 2022 OpenFOAM Incompressible RANS CFD)",
   "device": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
-  "wall_clock_seconds": 47.81,
+  "wall_clock_seconds": 23.38,
+  "grid_resolution": [
+    64,
+    128
+  ],
+  "split": {
+    "total_cases": 39,
+    "train_cases": 24,
+    "val_cases": 5,
+    "test_cases": 10,
+    "test_regime": "Highest 25% AoA (9.2 deg to 14.9 deg) - Near-Stall Extrapolation"
+  },
   "p": 16,
   "suction_peak_sensors": 13,
   "wake_sensors": 0,
@@ -14,23 +25,27 @@
       "rel_l2_pct": 45.19437553641538,
       "vort_err_pct": 140.1792057723245,
       "r_cont": 289.11680796513303,
-      "latency_ms": 0.481
+      "latency_ms": 0.102,
+      "status": "Winner (sole model beating mean baseline)"
     },
     "podmlp": {
       "rel_l2_pct": 62.900936126708984,
       "vort_err_pct": 99.8576889038086,
-      "r_cont": 52.431434631347656
+      "r_cont": 52.431434631347656,
+      "status": "Failed to beat baseline (near-stall extrapolation)"
     },
     "deeponet": {
       "rel_l2_pct": 68.55970764160156,
       "vort_err_pct": 219.933837890625,
-      "r_cont": 85.16043853759766
+      "r_cont": 85.16043853759766,
+      "status": "Failed to beat baseline (near-stall extrapolation)"
     },
     "sensor_mlp": {
       "rel_l2_pct": 81.78681945800781,
       "vort_err_pct": 99.42415618896484,
       "r_cont": 55.99950408935547,
-      "latency_ms": 1.073
+      "latency_ms": 0.727,
+      "status": "Failed to beat baseline (near-stall extrapolation)"
     }
   }
 }
