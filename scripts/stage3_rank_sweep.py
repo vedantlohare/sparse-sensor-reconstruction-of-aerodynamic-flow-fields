@@ -19,18 +19,22 @@ def run_rank_sweep():
     os.makedirs(results_dir, exist_ok=True)
     
     train_data = np.load(os.path.join(data_dir, 'train.npz'))
+    val_data = np.load(os.path.join(data_dir, 'val.npz'))
     test_data = np.load(os.path.join(data_dir, 'test.npz'))
-    d_train, d_test = train_data['data'], test_data['data']
+    d_train, d_val, d_test = train_data['data'], val_data['data'], test_data['data']
     M_train, C, ny, nx = d_train.shape
+    M_val = d_val.shape[0]
     M_test = d_test.shape[0]
     N = C * ny * nx
     N_spatial = ny * nx
     
     X_train_flat = d_train.reshape(M_train, N).T
+    X_val_flat = d_val.reshape(M_val, N).T
     X_test_flat = d_test.reshape(M_test, N).T
     
     mean_flow = np.mean(X_train_flat, axis=1, keepdims=True)
     X_train_fluct = X_train_flat - mean_flow
+    X_val_fluct = X_val_flat - mean_flow
     X_test_fluct = X_test_flat - mean_flow
     
     # Compute full SVD up to 50 modes
@@ -52,6 +56,7 @@ def run_rank_sweep():
         # Place sensors using highest candidate modes
         s_indices = qdeim_sensor_placement(Phi[:, :max(40, p)], p, num_channels=C)
         multi_indices = np.concatenate([s_indices + c * N_spatial for c in range(C)])
+        y_val = X_val_fluct[multi_indices, :]
         y_test = X_test_fluct[multi_indices, :]
         
         print(f"\n--- Sensor Budget p = {p} (Measurement Dimension 3p = {len(multi_indices)}) ---")
@@ -59,28 +64,30 @@ def run_rank_sweep():
         for r in ranks:
             cum_e = float(cum_energy[r-1] * 100.0)
             
-            # 1. Truncation error floor
+            # 1. Truncation error floor on test set
             trunc_fluc = Phi[:, :r] @ (Phi[:, :r].T @ X_test_fluct)
             trunc_recon = (trunc_fluc + mean_flow).T
             trunc_l2 = float(np.mean(relative_l2_error(X_test_flat.T, trunc_recon)) * 100.0)
             
-            # 2. Gappy POD across lambdas
-            best_l2 = float('inf')
+            # 2. Tune Tikhonov lambda on validation set
+            best_val_err = float('inf')
             best_lam = 0.0
-            best_recon = None
-            
             for lam in lambdas:
-                _, recon_fluc = gappy_pod_reconstruct(y_test, multi_indices, Phi[:, :r], mu=lam)
-                recon = (recon_fluc + mean_flow).T
-                l2 = float(np.mean(relative_l2_error(X_test_flat.T, recon)) * 100.0)
-                if l2 < best_l2:
-                    best_l2 = l2
+                _, recon_v_fluc = gappy_pod_reconstruct(y_val, multi_indices, Phi[:, :r], mu=lam)
+                recon_v = (recon_v_fluc + mean_flow).T
+                val_err = float(np.mean(relative_l2_error(X_val_flat.T, recon_v)) * 100.0)
+                if val_err < best_val_err:
+                    best_val_err = val_err
                     best_lam = lam
-                    best_recon = recon
+                    
+            # 3. Evaluate Gappy POD on test set with validation-tuned lambda
+            _, recon_fluc = gappy_pod_reconstruct(y_test, multi_indices, Phi[:, :r], mu=best_lam)
+            recon = (recon_fluc + mean_flow).T
+            best_l2 = float(np.mean(relative_l2_error(X_test_flat.T, recon)) * 100.0)
                     
             # Compute physical metrics
-            u_p = best_recon.reshape(M_test, C, ny, nx)[:, 0]
-            v_p = best_recon.reshape(M_test, C, ny, nx)[:, 1]
+            u_p = recon.reshape(M_test, C, ny, nx)[:, 0]
+            v_p = recon.reshape(M_test, C, ny, nx)[:, 1]
             u_t = X_test_flat.T.reshape(M_test, C, ny, nx)[:, 0]
             v_t = X_test_flat.T.reshape(M_test, C, ny, nx)[:, 1]
             w_p = compute_vorticity(u_p, v_p)

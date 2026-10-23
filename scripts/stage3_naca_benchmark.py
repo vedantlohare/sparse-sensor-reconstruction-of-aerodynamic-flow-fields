@@ -48,7 +48,7 @@ SAMPLE_AIRFRANS_FILES = [
 
 def download_sample_airfrans(target_dir):
     os.makedirs(target_dir, exist_ok=True)
-    base_url = "https://huggingface.co/datasets/zacheryasc/airfrans-processed/resolve/main"
+    base_url = "https://huggingface.co/datasets/zacheryasc/airfrans-processed/resolve/main/processed/full"
     print(f"Downloading sample AirfRANS simulation files to {target_dir}...")
     for fn in SAMPLE_AIRFRANS_FILES:
         fp = os.path.join(target_dir, fn)
