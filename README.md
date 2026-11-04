@@ -46,7 +46,7 @@ Since the full 10+ GB dataset cannot be uploaded to GitHub due to size limits, y
 1. Access the open-source release via the [CFDBench Repository](https://github.com/luo-yining/CFDBench).
 2. Extract the cylinder wake case folders into your local workspace under:
    ```text
-   vright_brothers_sparse_sensor/data/raw/cylinder/
+   data/raw/cylinder/
    ├── case0001/
    │   ├── u.npy
    │   ├── v.npy

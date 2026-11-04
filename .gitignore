@@ -21,3 +21,4 @@ output/*
 
 # Specific files ignored per request
 docs/PROJECT_GUIDE.md
+docs/comprehensive_report.tex

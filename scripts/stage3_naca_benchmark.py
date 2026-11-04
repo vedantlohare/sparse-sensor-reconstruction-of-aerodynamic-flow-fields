@@ -1,6 +1,5 @@
 """
-Stage 3 Phase 6: AirfRANS Incompressible Airfoil Benchmark Integration & Reconstruction
-Team: VRIGHT BROTHERS (AE646 Scientific Machine Learning)
+AirfRANS Incompressible Airfoil Benchmark Integration & Reconstruction
 
 This script ingests genuine high-fidelity OpenFOAM RANS CFD simulations from the
 NeurIPS 2022 AirfRANS benchmark, performs POD/SVD analysis, executes Q-DEIM

@@ -21,9 +21,9 @@ def generate_summary():
     rank_data = json.load(open(rank_file)) if os.path.exists(rank_file) else None
         
     lines = []
-    lines.append("# Stage 3 Comprehensive Empirical Results Summary")
-    lines.append("## Team VRIGHT BROTHERS — AE646 Scientific Machine Learning for Fluid Mechanics\n")
-    lines.append("This document summarizes all experimental phases executed for the Stage 3 benchmark. Every numerical figure in this document and accompanying reports is parsed directly from saved output logs and JSON artifact records.\n")
+    lines.append("# Comprehensive Empirical Results Summary")
+    lines.append("## Sparse-Sensor Reconstruction of Aerodynamic Flow Fields\n")
+    lines.append("This document summarizes all experimental phases executed across the benchmark suite. Every numerical figure in this document and accompanying reports is parsed directly from saved output logs and JSON artifact records.\n")
     
     # Environment
     lines.append("### Execution Environment & Hardware Specifications")

@@ -1,7 +1,7 @@
-# Stage 3 Comprehensive Empirical Results Summary
-## Team VRIGHT BROTHERS — AE646 Scientific Machine Learning for Fluid Mechanics
+# Comprehensive Empirical Results Summary
+## Sparse-Sensor Reconstruction of Aerodynamic Flow Fields
 
-This document summarizes all experimental phases executed for the Stage 3 benchmark. Every numerical figure in this document and accompanying reports is parsed directly from saved output logs and JSON artifact records.
+This document summarizes all experimental phases executed across the benchmark suite. Every numerical figure in this document and accompanying reports is parsed directly from saved output logs and JSON artifact records.
 
 ### Execution Environment & Hardware Specifications
 - **Compute Device:** NVIDIA GeForce RTX 3050 6GB Laptop GPU
