@@ -127,9 +127,10 @@ def plot_reynolds_generalization(re_values, re_labels, gappy_errs, pooled_mlp_er
     
     # Draw vertical separator between in-distribution and generalization regimes
     plt.axvline(2.5, color='gray', linestyle='--', alpha=0.7)
-    plt.text(1.2, max(max(single_mlp_errs), 30) * 0.9, 'Training Regime\n(Re in {100, 200, 300})', 
+    plt.ylim(0, 34)
+    plt.text(1.15, 30.2, 'Training Regime\n(Re in {100, 200, 300})', 
              ha='center', fontsize=10, fontweight='bold', bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgreen', alpha=0.3))
-    plt.text(3.7, max(max(single_mlp_errs), 30) * 0.9, 'Zero-Shot Evaluation\n(Interpolation & Extrapolation)', 
+    plt.text(3.85, 30.2, 'Zero-Shot Evaluation\n(Interpolation & Extrapolation)', 
              ha='center', fontsize=10, fontweight='bold', bbox=dict(boxstyle='round,pad=0.3', facecolor='wheat', alpha=0.3))
     
     plt.xticks(x_positions, re_labels, fontsize=11)
@@ -137,7 +138,7 @@ def plot_reynolds_generalization(re_values, re_labels, gappy_errs, pooled_mlp_er
     plt.ylabel('Test Relative $L_2$ Error (%)', fontsize=12, fontweight='bold')
     plt.title('Reynolds Number Generalization Performance ($p = 16$ Sensors)', fontsize=13, fontweight='bold', pad=10)
     plt.grid(True, linestyle=':', alpha=0.6)
-    plt.legend(fontsize=10.5, frameon=True, facecolor='white', framealpha=0.9, loc='upper left')
+    plt.legend(fontsize=10.0, frameon=True, facecolor='white', framealpha=0.92, loc='upper right', bbox_to_anchor=(0.99, 0.84))
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     plt.savefig(output_path, dpi=300, bbox_inches='tight')

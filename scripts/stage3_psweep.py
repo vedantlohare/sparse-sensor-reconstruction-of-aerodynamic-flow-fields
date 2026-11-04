@@ -133,6 +133,29 @@ def compute_all_metrics(true_flat, pred_flat, X_grid, Y_grid, cyl_mask, ring_mas
         'wall_p_mae': wall_p_mae
     }
 
+def plot_psweep_curve(sweep_results, output_path, r=5):
+    import matplotlib.pyplot as plt
+    p_keys = [str(k) for k in sorted([int(k) for k in sweep_results.keys()])]
+    x_pos = range(len(p_keys))
+    g_fixed = [sweep_results[k]['gappy_fixed_1e3']['rel_l2_pct'] for k in p_keys]
+    g_tuned = [sweep_results[k]['gappy_tuned']['metrics']['rel_l2_pct'] for k in p_keys]
+    mlp_m = [sweep_results[k]['sensor_mlp_mean']['rel_l2_pct'] for k in p_keys]
+
+    plt.figure(figsize=(8, 5.5))
+    plt.plot(x_pos, g_fixed, 'o--', color='#ff7f0e', linewidth=2, markersize=7, label=r'Gappy POD (Fixed $\lambda = 10^{-3}$)')
+    plt.plot(x_pos, g_tuned, 'd-.', color='#9467bd', linewidth=2, markersize=7, label=r'Gappy POD (Validation-Tuned $\lambda^*$)')
+    plt.plot(x_pos, mlp_m, 's-', color='#1f77b4', linewidth=2.2, markersize=7, label='SensorMLP (Physics-Informed)')
+    plt.xticks(x_pos, p_keys, fontsize=11)
+    plt.xlabel(r'Number of Sensors ($p$)', fontsize=12, fontweight='bold')
+    plt.ylabel(r'Relative $L_2$ Error (%)', fontsize=12, fontweight='bold')
+    plt.title(f'Sensor Budget Ablation: Reconstruction Accuracy ($r = {r}$)', fontsize=13, fontweight='bold')
+    plt.grid(True, linestyle=':', alpha=0.6)
+    plt.legend(fontsize=10.5, frameon=True, loc='upper right')
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Saved p-sweep figure to {output_path}")
+
 def run_psweep(quick=False, seeds=[0, 1, 2]):
     start_wall = time.time()
     device_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
@@ -315,6 +338,7 @@ def run_psweep(quick=False, seeds=[0, 1, 2]):
     with open(out_json, 'w') as f:
         json.dump(final_payload, f, indent=2)
     print(f"Saved Phase 1 results to {out_json}")
+    plot_psweep_curve(sweep_results, os.path.join(root_dir, 'output', 'ablation_sensor_scaling.png'), r=int(r))
     return final_payload
 
 if __name__ == '__main__':
