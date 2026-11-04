@@ -24,6 +24,66 @@ from scripts.stage3_psweep import compute_all_metrics, get_adjacent_ring_mask, t
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+def plot_model_comparison(models_dict, output_path):
+    import matplotlib.pyplot as plt
+    plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+    labels = ['Gappy POD\n(Linear ROM)', 'PODMLP\n(Latent SciML)', 'DeepONet\n(Operator Net)', 'SensorMLP\n(Direct SciML)']
+    errs = [
+        models_dict['gappy_pod']['rel_l2_pct'],
+        models_dict['podmlp_mean']['rel_l2_pct'],
+        models_dict['deeponet_mean']['rel_l2_pct'],
+        models_dict['sensor_mlp_mean']['rel_l2_pct'],
+    ]
+    stds = [
+        0.0,
+        models_dict['podmlp_std']['rel_l2_pct'],
+        models_dict['deeponet_std']['rel_l2_pct'],
+        models_dict['sensor_mlp_std']['rel_l2_pct'],
+    ]
+    colors = ['#5b9bd5', '#5ce1c6', '#f5b041', '#d92b3a']
+
+    bars = ax1.bar(labels, errs, yerr=stds, capsize=6, color=colors, edgecolor='black', linewidth=1.2, width=0.65)
+    ax1.set_ylim(0, 43)
+    ax1.set_ylabel('Relative L2 Error (%)', fontsize=11, fontweight='bold')
+    ax1.set_title('(a) Full-Field Reconstruction Error (p = 16)', fontsize=12, fontweight='bold')
+    for b, val, sd in zip(bars, errs, stds):
+        ax1.text(b.get_x() + b.get_width() / 2.0, val + sd + 0.9, f'{val:.1f}%', ha='center', va='bottom', fontsize=10.5, fontweight='bold')
+
+    lats = [
+        models_dict['gappy_pod']['latency_ms'],
+        models_dict['podmlp_mean']['latency_ms'],
+        models_dict['deeponet_mean']['latency_ms'],
+        models_dict['sensor_mlp_mean']['latency_ms'],
+    ]
+    params_m = [
+        0.0,
+        models_dict['podmlp_mean']['params'] / 1e6,
+        models_dict['deeponet_mean']['params'] / 1e6,
+        models_dict['sensor_mlp_mean']['params'] / 1e6,
+    ]
+    x = np.arange(len(labels))
+    w = 0.35
+    ax2.bar(x - w/2, lats, width=w, color='#4a5868', edgecolor='black', label='Latency (ms)')
+    ax2.set_ylim(0, 1.0)
+    ax2.set_ylabel('Inference Latency (ms)', fontsize=11, fontweight='bold', color='#2c3e50')
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(labels)
+    ax2.set_title('(b) Latency vs Model Complexity Tradeoff', fontsize=12, fontweight='bold')
+
+    ax2_r = ax2.twinx()
+    ax2_r.bar(x + w/2, params_m, width=w, color='#ec6459', edgecolor='black', label='Parameters (M)')
+    ax2_r.set_ylim(0, 30)
+    ax2_r.set_ylabel('Parameters (Millions)', fontsize=11, fontweight='bold', color='#c0392b')
+    ax2_r.grid(False)
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Saved model comparison figure to {output_path}")
+
 def run_additional_models_experiment(quick=False):
     start_wall = time.time()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -299,6 +359,7 @@ def run_additional_models_experiment(quick=False):
     with open(out_json, 'w') as f:
         json.dump(final_payload, f, indent=2)
     print(f"\nSaved Phase 5 model comparison results to {out_json} in {total_time}s ({total_time/60.0:.2f} min).")
+    plot_model_comparison(final_payload['models'], os.path.join(output_dir, 'model_comparison.png'))
     return final_payload
 
 if __name__ == '__main__':
