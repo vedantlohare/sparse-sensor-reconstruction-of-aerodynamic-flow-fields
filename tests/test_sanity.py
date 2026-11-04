@@ -162,6 +162,7 @@ def test_stage3_model_architectures_forward():
     r_modes = 5
     
     # 1. SensorMLP
+    input_dim = 48 # 16 sensors * 3 channels (u, v, p)
     mlp = SensorMLP(input_dim=input_dim, N=N)
     y = torch.randn(batch_size, input_dim)
     out_mlp = mlp(y)
@@ -196,4 +197,33 @@ def test_gappy_pod_rank_regularization():
     assert a_hat.shape == (r, 5)
     assert x_hat.shape == (N, 5)
     assert not np.isnan(x_hat).any()
+
+def test_batched_3d_vorticity_and_continuity_axes():
+    """
+    Verifies that compute_vorticity, vorticity_fidelity, and mean_continuity_residual
+    differentiate along spatial axes (-2, -1) for both 2D (ny, nx) and 3D (M, ny, nx) arrays.
+    """
+    from src.evaluation.metrics import compute_vorticity, vorticity_fidelity, mean_continuity_residual
+    np.random.seed(42)
+    M, ny, nx = 5, 16, 32
+    u_3d = np.random.randn(M, ny, nx)
+    v_3d = np.random.randn(M, ny, nx)
+    u_pred_3d = u_3d + 0.1 * np.random.randn(M, ny, nx)
+    v_pred_3d = v_3d + 0.1 * np.random.randn(M, ny, nx)
+
+    w_batch = compute_vorticity(u_3d, v_3d)
+    w_single = np.stack([compute_vorticity(u_3d[i], v_3d[i]) for i in range(M)], axis=0)
+    np.testing.assert_allclose(w_batch, w_single, atol=1e-12)
+
+    r_cont_batch = mean_continuity_residual(u_3d, v_3d)
+    r_cont_single = np.mean([mean_continuity_residual(u_3d[i], v_3d[i]) for i in range(M)])
+    np.testing.assert_allclose(r_cont_batch, r_cont_single, atol=1e-12)
+
+    vf_batch = vorticity_fidelity(w_batch, compute_vorticity(u_pred_3d, v_pred_3d))
+    vf_single = np.mean([
+        vorticity_fidelity(w_single[i], compute_vorticity(u_pred_3d[i], v_pred_3d[i]))
+        for i in range(M)
+    ])
+    np.testing.assert_allclose(vf_batch, vf_single, atol=1e-10)
+
 

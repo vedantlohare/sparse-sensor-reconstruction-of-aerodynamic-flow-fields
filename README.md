@@ -116,48 +116,48 @@ The snapshot matrix $\mathbf{X} \in \mathbb{R}^{N \times M}$ (mean-subtracted) u
 \mathbf{X} = \boldsymbol{\Phi} \boldsymbol{\Sigma} \mathbf{V}^T
 ```
 
-where $\boldsymbol{\Phi} \in \mathbb{R}^{N \times K}$ represents the orthonormal spatial modes, and the cumulative kinetic energy captured by $K$ modes is:
+where $\boldsymbol{\Phi} \in \mathbb{R}^{N \times r}$ represents the orthonormal spatial modes, and the cumulative fluctuation energy captured by $r$ modes satisfies the $95\%$ threshold ($r = 5$, $95.82\%$ on `case0001`):
 
 ```math
-\mathcal{E}(K) = \frac{\sum_{j=1}^K \sigma_j^2}{\sum_{j=1}^{\min(N,M)} \sigma_j^2} \ge 99.0\%
+\mathcal{E}(r) = \frac{\sum_{j=1}^r \sigma_j^2}{\sum_{j=1}^{\min(N,M)} \sigma_j^2} \ge 95.0\%
 ```
 
 ### 3.2 Optimal Sensor Placement (Q-DEIM)
-Rather than placing sensors randomly or uniformly, Q-DEIM uses column-pivoted QR decomposition on the transpose of the leading spatial POD modes:
+Rather than placing sensors randomly or uniformly, Q-DEIM uses column-pivoted QR decomposition on the transpose of the spatial POD modes pooled across all $C = 3$ channels ($u, v, p$):
 
 ```math
-\boldsymbol{\Phi}_K^T \mathbf{P} = \mathbf{Q} \mathbf{R}
+\boldsymbol{\Phi}_{\text{spatial}}^T \mathbf{P} = \mathbf{Q} \mathbf{R}
 ```
 
-The permutation matrix $\mathbf{P}$ yields the optimal measurement indices. This greedily minimizes the condition number of the measurement matrix, maximizing linear independence and noise resistance.
+The permutation matrix $\mathbf{P}$ yields the $p$ optimal measurement coordinates ($d_{\text{sens}} = 3p$ scalar measurements). This greedily minimizes the condition number of the measurement matrix, maximizing linear independence and noise resistance.
 
 ### 3.3 Tikhonov-Regularized Gappy POD
-Given sparse readings $\mathbf{y} \in \mathbb{R}^{d_{\text{sens}}}$, the modal amplitudes $\mathbf{a}$ are inverted via:
+Given sparse fluctuation readings $\tilde{\mathbf{y}} \in \mathbb{R}^{3p}$, the modal amplitudes $\mathbf{a} \in \mathbb{R}^r$ are inverted via:
 
 ```math
-\hat{\mathbf{a}} = \left(\boldsymbol{\Theta}^T \boldsymbol{\Theta} + \alpha \mathbf{I}\right)^{-1} \boldsymbol{\Theta}^T \mathbf{y}
+\hat{\mathbf{a}} = \left(\boldsymbol{\Theta}^T \boldsymbol{\Theta} + \lambda \mathbf{I}\right)^{-1} \boldsymbol{\Theta}^T \tilde{\mathbf{y}}
 ```
 ```math
-\hat{\mathbf{x}}_{\text{gappy}} = \boldsymbol{\Phi}_K \hat{\mathbf{a}} + \bar{\mathbf{x}}
+\hat{\mathbf{x}}_{\text{gappy}} = \boldsymbol{\Phi}_r \hat{\mathbf{a}} + \bar{\mathbf{x}}
 ```
 
-where $\alpha = 10^{-6}$ provides numerical stabilization against ill-conditioned sensor topologies.
+where $\boldsymbol{\Theta} = \mathbf{C}\boldsymbol{\Phi}_r \in \mathbb{R}^{3p \times r}$ and $\lambda \in [10^{-8}, 1.0]$ is tuned on the validation split ($\lambda^* = 10^{-5}$ at $p=16$) to stabilize inversion against ill-conditioned sensor topologies.
 
 ### 3.4 Deep Learning Architecture: SensorMLP
-The neural network learns a non-linear surrogate mapping directly from sparse measurements to the full discrete velocity state:
+The neural network learns a non-linear surrogate mapping directly from sparse measurements to the full discrete flow state:
 
 ```math
-\mathcal{F}_\theta: \mathbb{R}^{d_{\text{sens}}} \to \mathbb{R}^{N}
+\mathcal{F}_\theta: \mathbb{R}^{3p} \to \mathbb{R}^{N}
 ```
 
-- **Architecture:** $[C \times p] \to [128] \to [256] \to [512] \to [1024] \to [N=24576]$
+- **Architecture:** $[3p] \to [128] \to [256] \to [512] \to [1024] \to [N=24576]$
 - **Activations:** GELU (Gaussian Error Linear Unit) with LayerNorm regularization to stabilize the internal covariate shift across layers.
 
 ### 3.5 Physics-Aware Multi-Objective Loss
-Training is guided by a composite loss balancing data fidelity, spatial smoothness, and mass conservation:
+Training is guided by a composite loss (`src/sciml/loss.py`) balancing data fidelity, spatial gradient sharpness, mass conservation, and solid-wall no-slip boundary conditions:
 
 ```math
-\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{MSE}} + \lambda_{\text{grad}} \mathcal{L}_{\text{grad}} + \lambda_{\text{cont}} \mathcal{L}_{\text{cont}}
+\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{MSE}} + \gamma_1 \mathcal{L}_{\text{grad}} + \gamma_2 \mathcal{L}_{\text{div}} + \gamma_3 \mathcal{L}_{\text{bound}}
 ```
 
 1. **Data Reconstruction Loss:**
@@ -166,16 +166,16 @@ Training is guided by a composite loss balancing data fidelity, spatial smoothne
 \mathcal{L}_{\text{MSE}} = \frac{1}{B \cdot N} \|\mathbf{x} - \hat{\mathbf{x}}\|_2^2
 ```
 
-2. **Spatial Gradient Regularization (Vorticity Penalty):**
+2. **Spatial Gradient Regularization ($L_1$ Sobolev Penalty):**
    
 ```math
-\mathcal{L}_{\text{grad}} = \frac{1}{B} \sum_{c \in \{u, v\}} \left( \left\|\frac{\partial \hat{\mathbf{x}}_c}{\partial x} - \frac{\partial \mathbf{x}_c}{\partial x}\right\|_2^2 + \left\|\frac{\partial \hat{\mathbf{x}}_c}{\partial y} - \frac{\partial \mathbf{x}_c}{\partial y}\right\|_2^2 \right)
+\mathcal{L}_{\text{grad}} = \frac{1}{B \cdot N} \sum_{c \in \{u, v, p\}} \left( \left\|\frac{\partial \hat{\mathbf{x}}_c}{\partial x} - \frac{\partial \mathbf{x}_c}{\partial x}\right\|_1 + \left\|\frac{\partial \hat{\mathbf{x}}_c}{\partial y} - \frac{\partial \mathbf{x}_c}{\partial y}\right\|_1 \right)
 ```
 
 3. **Continuity Equation Residual (Incompressibility Constraint):**
    
 ```math
-\mathcal{L}_{\text{cont}} = \frac{1}{B} \left\| \frac{\partial \hat{u}}{\partial x} + \frac{\partial \hat{v}}{\partial y} \right\|_2^2
+\mathcal{L}_{\text{div}} = \frac{1}{B \cdot N_{\text{spatial}}} \left\| \frac{\partial \hat{u}}{\partial x} + \frac{\partial \hat{v}}{\partial y} \right\|_1
 ```
 
 ---
@@ -262,7 +262,7 @@ python data/download_dataset.py --raw_dir data/raw/cylinder/case0001
 # 2. Chronological 70/15/15 split (1050 train, 225 val, 225 test) with Z-score scaling
 python data/preprocess.py
 
-# 3. Train on CUDA: Thin SVD -> Q-DEIM (p=16, 2p=32 inputs) -> SensorMLP vs Gappy POD
+# 3. Train on CUDA: Thin SVD -> Q-DEIM (p=16, 3p=48 inputs) -> SensorMLP vs Gappy POD
 python scripts/run_full_experiments.py
 ```
 
@@ -275,12 +275,12 @@ python scripts/run_full_experiments.py --case case0001
 
 **What the pipeline executes:**
 1. Verifies/generates the preprocessed dataset in `data/processed/`.
-2. Computes the Thin SVD snapshot POD basis and extracts the top $K=16$ modes ($>99\%$ kinetic energy).
-3. Executes Q-DEIM pivoted QR to select $p=16$ optimal physical sensor coordinates.
+2. Computes the Thin SVD snapshot POD basis and extracts the leading $r=5$ modes ($\ge 95\%$ kinetic energy; $95.82\%$ on `case0001`).
+3. Executes Q-DEIM pivoted QR to select $p=16$ optimal physical sensor coordinates ($3p = 48$ scalar channels).
 4. Saves sensor coordinates to `output/sensor_locations_p16.csv` and `sensor_locations_p16.npz`.
 5. Solves Tikhonov-regularized Gappy POD reconstruction as the linear benchmark.
 6. Trains `SensorMLP` with physics-aware gradient & continuity loss on GPU/CPU.
-7. Computes physical metrics: Relative $L_2$, Vorticity RMSE, and Continuity Divergence Residuals.
+7. Computes physical metrics: Relative $L_2$, Relative Vorticity $L_2$, and Mean Continuity Divergence Residuals.
 8. Renders publication-grade `output/field_reconstruction.png` with actual sensor dots overlaid.
 
 ---
@@ -300,64 +300,52 @@ jupyter notebook notebooks/full_walkthrough.ipynb
 ```
 **What the notebook demonstrates:**
 - **Data Loading:** Inspecting the raw tensors and plotting initial flow fields.
-- **POD & SVD:** Performing Proper Orthogonal Decomposition and analyzing the cumulative energy spectrum graph (showing how 6 modes capture 95% of the energy).
+- **POD & SVD:** Performing Proper Orthogonal Decomposition and analyzing the cumulative energy spectrum graph (showing how $r=5$ modes capture $95.82\%$ of the energy).
 - **Q-DEIM Sensor Placement:** Calculating the optimal pivot points and plotting a highly visual contour map of the cylinder wake with exact sensor coordinates.
-- **Gappy POD Reconstruction:** Reconstructing the flow field from sparse measurements and calculating the baseline error.
+- **Gappy POD & SciML Reconstruction:** Reconstructing the flow field from sparse measurements across all Stage 3 phases.
 
 ---
 
 ## 6. Physical Evaluation Metrics
 
-Model performance is evaluated not merely on pixel-level MSE, but on aerodynamically critical derived quantities:
+Model performance is evaluated not merely on pixel-level MSE, but on aerodynamically critical derived quantities (`src/evaluation/metrics.py`):
 
-1. **Relative $L_2$ Velocity Norm:**
+1. **Relative $L_2$ State Norm:**
    
 ```math
-\epsilon_{L_2} = \frac{\|\mathbf{u}_{\text{true}} - \mathbf{u}_{\text{pred}}\|_2}{\|\mathbf{u}_{\text{true}}\|_2}
+\epsilon_{L_2} = \frac{\|\mathbf{x}_{\text{true}} - \mathbf{x}_{\text{pred}}\|_2}{\|\mathbf{x}_{\text{true}}\|_2} \times 100\%
 ```
 
-2. **Vorticity Field RMSE ($\omega$):**
+2. **Vorticity Field Relative Error ($\epsilon_\omega$):**
    
 ```math
-\omega = \frac{\partial v}{\partial x} - \frac{\partial u}{\partial y}, \quad \text{RMSE}_\omega = \sqrt{\frac{1}{N} \sum (\omega_{\text{true}} - \omega_{\text{pred}})^2}
+\omega = \frac{\partial v}{\partial x} - \frac{\partial u}{\partial y}, \quad \epsilon_\omega = \frac{\|\omega_{\text{true}} - \omega_{\text{pred}}\|_2}{\|\omega_{\text{true}}\|_2} \times 100\%
 ```
 
-3. **Continuity Equation Divergence Residual:**
+3. **Mean Continuity Equation Divergence Residual:**
    
 ```math
-\mathcal{R}_{\text{cont}} = \left\| \frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} \right\|_2
+\mathcal{R}_{\text{cont}} = \frac{1}{N_{\text{spatial}}} \sum_{i,j} \left| \frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} \right|
 ```
    
-   Measures whether the reconstructed field respects physical mass conservation for incompressible flow.
+   Measures whether the reconstructed velocity field respects physical mass conservation for incompressible flow.
 
 ---
 
-## 7. Benchmark Results & Comparative Analysis
+## 7. Benchmark Overview (Nominal $p = 16$, $Re \approx 200$)
 
-Summary of reconstruction performance evaluated on the unseen test set ($M_{\text{test}} = 225$ snapshots) at a fixed sensor budget $p=16$:
+Summary of nominal reconstruction performance evaluated on the unseen test set ($M_{\text{test}} = 225$ snapshots) at sensor budget $p=16$ ($3p = 48$ scalar channels, 3 random seeds; see **Section 9** for all 7 complete Stage 3 tables):
 
-| Metric | Sensor Budget $p=16$ (ROM) | Sensor Budget $p=16$ (SciML) |
-|---|---|---|
-| **Relative $L_2$ Error** | $15.86\%$ | **$3.16\%$** |
-| **Vorticity RMSE ($\omega$)** | $20.32\%$ | **$5.21\%$** |
-| **Continuity Residual ($\nabla \cdot \mathbf{u}$)** | $0.166$ | **$0.163$** |
-
-### Sensor Budget Ablation Summary
-
-The following table demonstrates the $L_2$ reconstruction error scaling as a function of the number of sensors $p$, showcasing the limits of the linear Gappy POD approach versus the robust non-linear SensorMLP.
-
-| Sensor Budget $p$ | Gappy Rel $L_2$ Error (%) | SensorMLP Rel $L_2$ Error (%) |
-|---|---|---|
-| 4 | 28.47 | 3.42 |
-| 8 | 18.89 | 3.16 |
-| 16 | 15.86 | 3.16 |
-| 32 | 13.15 | 3.04 |
-| 64 | 13.08 | 3.08 |
-| 128 | 13.00 | 3.18 |
+| Metric | Gappy POD ($r=5$, Fixed $\lambda=10^{-3}$) | Gappy POD ($r=5$, Tuned $\lambda=10^{-5}$) | **SensorMLP (Proposed SciML)** |
+|---|:---:|:---:|:---:|
+| **Relative $L_2$ Error (%)** | $17.36\%$ | $15.38\%$ | **$3.12 \pm 0.01\%$** |
+| **Vorticity Error $\epsilon_\omega$ (%)** | $21.23\%$ | $20.94\%$ | **$3.05 \pm 0.05\%$** |
+| **Continuity Residual $\mathcal{R}_{\text{cont}}$** | $0.1695$ | $0.1716$ | **$0.1557 \pm 0.0001$** |
+| **Wall Pressure MAE** | $0.0189$ | $0.0170$ | **$0.0026 \pm 0.0001$** |
 
 **Key Observations:**
-- **Q-DEIM Sensor Efficiency:** Q-DEIM sensor placement successfully clusters sensors along the shear layers and wake centerline where vorticity gradients are steepest, providing an optimized linear basis for reconstruction.
-- **SciML Non-linear Superiority:** The deep `SensorMLP` uniformly outperforms the classical Gappy POD baseline across all budgets $p$. The MLP maintains excellent accuracy (~3.5% error) even in the highly sparse $p=4$ regime where classical methods diverge (28.47% error). Furthermore, the physics loss successfully constrains the network to respect mass conservation, slightly outperforming the linear projection method on the continuity residual constraint.
+- **Q-DEIM Sensor Efficiency:** Q-DEIM sensor placement clusters sensors along the shear layers and wake separation zone where modal gradients are steepest, outperforming uniform and random layouts (Table 3).
+- **Modal Truncation vs. Nonlinear Manifold Mapping:** At $r=5$ ($95.82\%$ energy), Gappy POD is bottlenecked by its $13.62\%$ modal truncation floor (`Table 2B`). Increasing modal rank to $r=40$ at $p=32$ ($3p=96$ measurements) enables Gappy POD to reach $2.86\%$ error, whereas `SensorMLP` achieves $3.12\%$ even at extreme sparsity ($p=4$, $12$ scalar readings) by learning the periodic limit-cycle phase manifold directly.
 
 ---
 
@@ -417,14 +405,16 @@ Each physical sensor measures $u, v$, and $p$, providing $3p$ measurement dimens
 
 ### 9.3 Table 2B: Gappy POD Modal Rank Sweep ($Re \approx 200$)
 
-To investigate whether the ~15% Gappy POD floor was caused by mathematical limitations or modal truncation ($r=5$, 95% energy), we performed a systematic rank sweep across $r \in \{6, 10, 20, 40\}$ at $p=16$ and $p=32$:
+To investigate whether the ~15% Gappy POD floor was caused by mathematical limitations or modal truncation ($r=5$, 95.82% energy), we performed a systematic rank sweep across $r \in \{5, 6, 10, 20, 40\}$ at $p=16$ and $p=32$:
 
 | Sensors ($p$) | Modal Rank ($r$) | Energy (%) | Truncation Floor (%) | Gappy POD Rel $L_2$ (%) | Condition $\kappa(\mathbf{\Theta})$ | Tuned $\lambda$ | SensorMLP Rel $L_2$ (%) |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 16 | 5 | 95.82% | 13.62% | 15.38% | 1.7 | $10^{-5}$ | 3.12 ± 0.01% |
 | 16 | 6 | 96.72% | 12.65% | 14.43% | 2.1 | 0 | 3.12 ± 0.01% |
 | 16 | 10 | 98.61% | 8.01% | 10.94% | 2.6 | 0 | 3.12 ± 0.01% |
 | 16 | 20 | 99.71% | 3.80% | 8.72% | 11.0 | 0 | 3.12 ± 0.01% |
 | 16 | 40 | 99.97% | 1.45% | 10.14% | 271.5 | $10^{-6}$ | 3.12 ± 0.01% |
+| 32 | 5 | 95.82% | 13.62% | 14.60% | 1.7 | $10^{-4}$ | 3.13 ± 0.01% |
 | 32 | 6 | 96.72% | 12.65% | 13.77% | 1.9 | 0 | 3.13 ± 0.01% |
 | 32 | 10 | 98.61% | 8.01% | 9.78% | 2.4 | 0 | 3.13 ± 0.01% |
 | 32 | 20 | 99.71% | 3.80% | 5.23% | 4.3 | 0 | 3.13 ± 0.01% |
@@ -456,34 +446,34 @@ To investigate whether the ~15% Gappy POD floor was caused by mathematical limit
 
 | SNR (dB) | Gappy POD Tuned $\lambda$ | Gappy POD Rel $L_2$ (%) | Clean-Trained SensorMLP Rel $L_2$ (%) | Noise-Augmented SensorMLP Rel $L_2$ (%) | Behavior / Dynamics |
 |:---:|:---:|:---:|:---:|:---:|:---|
-| $\infty$ (Clean) | $1.0 \times 10^{-5}$ | 15.38% | 3.12 ± 0.01% | **3.35 ± 0.02%** | Nominal baseline |
-| 40dB | $1.0 \times 10^{-5}$ | 15.38% | 3.12 ± 0.01% | **3.35 ± 0.02%** | Negligible degradation |
-| 30dB | $1.0 \times 10^{-5}$ | 15.39% | 3.16 ± 0.01% | **3.36 ± 0.02%** | High stability |
+| $\infty$ (Clean) | $1.0 \times 10^{-5}$ | 15.38% | **3.12 ± 0.01%** | 3.35 ± 0.02% | Nominal baseline |
+| 40dB | $1.0 \times 10^{-5}$ | 15.38% | **3.12 ± 0.01%** | 3.35 ± 0.02% | Negligible degradation |
+| 30dB | $1.0 \times 10^{-5}$ | 15.39% | **3.16 ± 0.01%** | 3.36 ± 0.02% | High stability |
 | 20dB | $1.0 \times 10^{-4}$ | 15.48% | 3.53 ± 0.02% | **3.46 ± 0.02%** | Clean MLP begins degrading |
 | 10dB | $1.0 \times 10^{-4}$ | 16.11% | 6.00 ± 0.10% | **4.25 ± 0.03%** | Tikhonov suppresses noise (+0.73%), Clean MLP degrades 2× |
 
 ![Noise Robustness](output/stage3/noise_robustness.png)
 
-> **Noise Dynamics:** Gappy POD does **not** amplify noise; optimal Tikhonov regularization ($\lambda = 10^{-4}$) keeps its error exceptionally flat (rising by only 0.73 percentage points from clean to 10 dB). In contrast, clean-trained SensorMLP degrades by nearly 2× (3.12% to 6.00%). Noise-augmented training mitigates this (achieving 4.25% at 10 dB), but incurs a slight clean-data penalty (3.35% vs 3.12%).
+> **Noise Dynamics:** Gappy POD does **not** amplify noise; optimal Tikhonov regularization ($\lambda = 10^{-4}$) keeps its error exceptionally flat (rising by only 0.73 percentage points from clean to 10 dB). In contrast, clean-trained SensorMLP degrades by nearly 2× (3.12% to 6.00%). Noise-augmented training mitigates this (achieving 4.25% at 10 dB), at the cost of a small clean-data penalty (3.35% vs 3.12% at $\infty\text{ dB}$–$30\text{ dB}$).
 
 ---
 
 ### 9.6 Table 5: Reynolds Number Cross-Regime Generalization ($p = 16$ Sensors)
 
-A pooled multi-regime library ($Re \in \{100, 200, 300\}$) was evaluated on both in-distribution and unseen test regimes:
+A pooled multi-regime library ($Re \in \{100, 200, 300\}$, stratified per-case chronological 70/15/15 split) was evaluated on both held-out in-distribution test snapshots and unseen Reynolds regimes:
 
 | Target Regime | Reynolds ($Re$) | Pooled Gappy POD Rel $L_2$ (%) | Pooled SensorMLP Rel $L_2$ (%) | Generalization Comparison | Single-$Re$ ($Re=200$) MLP (%) |
 |:---|:---:|:---:|:---:|:---:|:---:|
-| Train | 100 | **0.60%** | 2.54 ± 0.00% | Gappy POD (4.23× better) | 29.17% |
-| Train | 200 | **2.37%** | 2.78 ± 0.00% | Gappy POD (1.17× better) | 2.96% |
-| Interpolation | 240 | **2.23%** | 3.44 ± 0.06% | Gappy POD (1.54× better) | 7.34% |
-| Interpolation | 260 | **2.55%** | 3.94 ± 0.10% | Gappy POD (1.54× better) | 9.77% |
-| Train | 300 | **3.92%** | 4.81 ± 0.14% | Gappy POD (1.23× better) | 13.87% |
-| Extrapolation | 400 | 8.13% | **6.21 ± 0.00%** | **SensorMLP (1.31× better)** | 20.87% |
+| Train | 100 | 3.29% | **2.74 ± 0.02%** | **SensorMLP (1.20× better)** | 27.70% |
+| Train | 200 | 6.59% | **3.89 ± 0.07%** | **SensorMLP (1.69× better)** | 5.90% |
+| Interpolation | 240 | **1.43%** | 2.97 ± 0.00% | Gappy POD (2.08× better) | 7.56% |
+| Interpolation | 260 | **1.19%** | 2.99 ± 0.00% | Gappy POD (2.52× better) | 10.00% |
+| Train | 300 | **3.67%** | 3.96 ± 0.04% | Gappy POD (1.08× better) | 14.72% |
+| Extrapolation | 400 | 4.75% | **4.62 ± 0.14%** | **SensorMLP (1.03× better)** | 20.65% |
 
 ![Reynolds Generalization](output/stage3/reynolds_generalization.png)
 
-> **Physical Interpretation:** Linear modal interpolation via Gappy POD across a pooled multi-Reynolds library is remarkably effective inside the convex hull ($Re \in [100, 300]$), achieving 0.60%–3.92% error and consistently outperforming the neural network. SensorMLP demonstrates its superior non-linear representational advantage strictly during out-of-distribution extrapolation ($Re = 400$, 6.21% vs 8.13%), where flow dynamics depart from the training modal subspace.
+> **Physical Interpretation:** Both Pooled Gappy POD and Pooled SensorMLP substantially outperform the Single-$Re$ ($Re=200$) baseline across parameter shifts. Linear modal projection via Gappy POD excels on smooth intermediate interpolation regimes ($Re \in \{240, 260, 300\}$, achieving 1.19%–3.67% error), whereas Pooled SensorMLP achieves lower error on the $Re \in \{100, 200\}$ regimes and during out-of-distribution extrapolation ($Re = 400$, 4.62% vs 4.75%).
 
 ---
 
@@ -500,29 +490,29 @@ A pooled multi-regime library ($Re \in \{100, 200, 300\}$) was evaluated on both
 
 > **Understanding DeepONet Performance:** MultiChannelDeepONet exhibits higher error (36.35%) due to:
 > 1. **Model Parameter Disparity:** 106k parameters vs 25.9M in SensorMLP.
-> 2. **Bilinear Separation Bottleneck:** Outputting fields as $\sum_{k=1}^q b_k(y) t_k(x)$ enforces a low-rank separation of variables that struggles to resolve localized, high-gradient shear layers without spatial convolutions or Fourier feature trunk embeddings.
-> 3. **Subsampling Identity:** Evaluating DeepONet on a 50% subsampled grid yields the exact same relative error (36.35%) because discrete relative $L_2$ error approximates the continuous functional $L_2$ norm; this reflects grid-invariant evaluation, not spatial generalization.
+> 2. **Bilinear Separation Bottleneck:** Outputting fields as $\sum_{k=1}^q b_k(y) t_k(x)$ enforces a low-rank separation of variables that struggles to resolve localized, high-gradient shear layers without spatial convolutions or Fourier feature trunk embeddings (compounded by `LayerNorm` on the 2D coordinate projection in the first trunk layer).
+> 3. **Subsampling Identity:** Evaluating DeepONet on a 50% subsampled grid yields the exact same relative error (36.36% vs 36.35%) because discrete relative $L_2$ error approximates the continuous functional $L_2$ norm; this reflects grid-invariant evaluation, not spatial generalization.
 
 ---
 
 ### 9.8 Table 7: AirfRANS Incompressible Airfoils Benchmark ($p = 16$ Q-DEIM Sensors)
 
-Evaluated on **39 genuine OpenFOAM incompressible RANS CFD simulations** from the NeurIPS 2022 **AirfRANS** dataset ($Re \sim 2-6 \times 10^6$, $\alpha \in [-4.9^\circ, 14.9^\circ]$) across various NACA 4- and 5-digit airfoils on a $64 \times 128$ Cartesian grid. The test set comprises the highest 25% of AoA ($\alpha \in [9.2^\circ, 14.9^\circ]$), representing pure near-stall extrapolation from 24 training cases (5 validation):
+Evaluated on **39 genuine OpenFOAM incompressible RANS CFD simulations** from the NeurIPS 2022 **AirfRANS** dataset ($Re \sim 2-6 \times 10^6$, $\alpha \in [-4.9^\circ, 14.9^\circ]$) across various NACA 4- and 5-digit airfoils on a $64 \times 128$ Cartesian grid. The 39 simulations are sorted by AoA into 29 non-test cases (24 training + 5 validation) and 10 held-out test cases (highest 25% of AoA, $\alpha \in [9.2^\circ, 14.9^\circ]$), representing near-stall AoA extrapolation:
 
 | Model Architecture | Rel $L_2$ Error (%) | Vorticity Error $\epsilon_\omega$ (%) | Continuity Residual $\mathcal{R}_{cont}$ | Latency (ms) | Generalization Status |
 |:---|:---:|:---:|:---:|:---:|:---|
 | Mean-Flow Baseline ($p=0$) | 62.91% | — | — | < 0.1 ms | Reference Baseline |
-| **Gappy POD (Linear ROM)** | **45.19%** | 140.18% | 289.12 | 0.48 ms | **Sole model beating baseline (-17.7%)** |
-| PODMLP (Latent SciML) | 62.90% | 99.86% | 52.43 | ~0.40 ms | Matches mean baseline |
-| DeepONet (Operator Net) | 68.56% | 219.93% | 85.16 | ~1.20 ms | Fails baseline (+5.7% error) |
-| SensorMLP (Direct SciML) | 81.79% | 99.42% | 56.00 | 1.07 ms | Fails baseline (+18.9% error) |
+| **Gappy POD (Linear ROM)** | **45.19%** | 98.09% | 11.43 | 0.25 ms | **Sole model beating baseline (-17.7%)** |
+| PODMLP (Latent SciML) | 62.90% | 83.88% | 3.48 | ~0.40 ms | Matches mean baseline |
+| DeepONet (Operator Net) | 68.56% | 91.77% | 7.78 | ~1.20 ms | Fails baseline (+5.7% error) |
+| SensorMLP (Direct SciML) | 81.79% | 84.76% | 5.27 | 1.18 ms | Fails baseline (+18.9% error) |
 
 ![Airfoil Benchmark](output/stage3/naca_reconstruction.png)
 
 > **Key Aerodynamic Takeaways:**
 > 1. **Sensor Placement Physics:** Q-DEIM automatically placed **13 of 16 sensors along the leading-edge suction peak ($x/c \in [0, 0.35]$)**, mirroring physical surface pressure taps in aerodynamic wind tunnels.
-> 2. **Near-Stall Extrapolation:** Gappy POD is the **only method that outperforms the mean-flow baseline** (45.19% vs 62.91%). With only 24 training cases, direct neural regression over-smoothes the intense suction peak when extrapolating into separated, near-stall regimes.
-> 3. **Continuity Residual:** Finite-difference divergence on immersed body Cartesian grids produces boundary derivative spikes (289 for Gappy POD), reflecting grid discretization artifacts at solid boundaries.
+> 2. **Near-Stall Extrapolation:** Gappy POD is the **only method that outperforms the mean-flow baseline** (45.19% vs 62.91%). With only 24 training cases (and 5 validation cases), direct neural regression overfits to attached low-AoA regimes and fails when extrapolating into separated, near-stall AoAs.
+> 3. **Continuity Residual:** Finite-difference divergence on immersed body Cartesian grids produces boundary derivative spikes (11.43 for Gappy POD vs 3.48–5.27 for physics-penalized neural models), reflecting grid discretization jumps across the immersed airfoil boundary.
 
 ---
 

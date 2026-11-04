@@ -158,12 +158,13 @@ def run_naca_benchmark(quick=False, auto_download=False):
     data = data[sort_idx]
     aoas = aoas[sort_idx]
     
-    # 75% Train, 25% Held-out Test
+    # 75% Train+Val (29 cases: 24 fit + 5 val), 25% Held-out Test (10 cases)
     M_train = int(0.75 * M)
     M_test = M - M_train
+    val_count = min(5, max(1, M_train // 5))
     data_train = data[:M_train]
     data_test = data[M_train:]
-    print(f"\nPartitioning {M} cases into {M_train} training and {M_test} test airfoils.")
+    print(f"\nPartitioning {M} cases into {M_train} train/val ({M_train - val_count} train + {val_count} val) and {M_test} test airfoils.")
     print(f"Test AoAs (unseen): {aoas[M_train:].round(1)} deg")
     
     X_train_flat = data_train.reshape(M_train, N).T
@@ -175,7 +176,7 @@ def run_naca_benchmark(quick=False, auto_download=False):
     
     # 2. POD Analysis
     Phi, S, r, cum_energy = compute_pod(X_train_fluct, energy_threshold=0.95)
-    print(f"\nPOD Rank for NACA Airfoil: r={r} modes capturing {cum_energy[r-1]*100:.2f}% aerodynamic variance")
+    print(f"\nPOD Rank for AirfRANS Airfoils: r={r} modes capturing {cum_energy[r-1]*100:.2f}% aerodynamic variance")
     
     # 3. Q-DEIM Optimal Sensor Placement (p = 16)
     p = 16
@@ -269,7 +270,8 @@ def run_naca_benchmark(quick=False, auto_download=False):
     t0 = time.perf_counter()
     for _ in range(50):
         _ = sensormlp(y_test[:1])
-    torch.cuda.synchronize()
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
     mlp_lat_ms = ((time.perf_counter() - t0) / 50.0) * 1000.0
     
     t0 = time.perf_counter()
@@ -309,10 +311,11 @@ def run_naca_benchmark(quick=False, auto_download=False):
         'wall_clock_seconds': total_time,
         'grid_resolution': [ny, nx],
         'split': {
-            'total_cases': M,
-            'train_cases': 24,
-            'val_cases': 5,
-            'test_cases': 10,
+            'total_cases': int(M),
+            'train_val_cases': int(M_train),
+            'train_cases': int(len(data_fit)),
+            'val_cases': int(val_count),
+            'test_cases': int(M_test),
             'test_regime': 'Highest 25% AoA (9.2 deg to 14.9 deg) - Near-Stall Extrapolation'
         },
         'p': p,
@@ -330,7 +333,7 @@ def run_naca_benchmark(quick=False, auto_download=False):
     out_json = os.path.join(results_dir, 'phase6_naca.json')
     with open(out_json, 'w') as f:
         json.dump(payload, f, indent=2)
-    print(f"\nSaved NACA benchmark results to {out_json}")
+    print(f"\nSaved AirfRANS airfoil benchmark results to {out_json}")
     
     # 8. Publication Plot
     plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')

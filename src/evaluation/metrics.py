@@ -13,28 +13,35 @@ def relative_l2_error(y_true, y_pred):
 
 def compute_vorticity(u, v, dx=1.0, dy=1.0):
     """
-    Computes the 2D vorticity field (omega_z = dv/dx - du/dy)
-    u, v: 2D numpy arrays
+    Computes the 2D vorticity field (omega_z = dv/dx - du/dy).
+    Supports 2D (ny, nx) or batched 3D (M, ny, nx) numpy arrays.
     """
-    dv_dx = np.gradient(v, dx, axis=1)
-    du_dy = np.gradient(u, dy, axis=0)
+    dv_dx = np.gradient(v, dx, axis=-1)
+    du_dy = np.gradient(u, dy, axis=-2)
     return dv_dx - du_dy
 
 def vorticity_fidelity(w_true, w_pred):
     """
     Returns the relative L2 error norm of the vorticity fields in percentage.
+    Supports 2D (ny, nx) or batched 3D (M, ny, nx) numpy arrays.
     """
+    if w_true.ndim >= 3:
+        m = w_true.shape[0]
+        num = np.linalg.norm((w_true - w_pred).reshape(m, -1), axis=-1)
+        den = np.linalg.norm(w_true.reshape(m, -1), axis=-1)
+        den = np.where(den < 1e-8, 1.0, den)
+        return float(np.mean(num / den) * 100.0)
     num = np.linalg.norm(w_true - w_pred)
     den = np.linalg.norm(w_true)
-    return (num / (den + 1e-8)) * 100
+    return float((num / (den + 1e-8)) * 100.0)
 
 def compute_continuity_residual(u, v, dx=1.0, dy=1.0):
     """
-    Computes the divergence of the velocity field (div u = du/dx + dv/dy)
-    u, v: 2D numpy arrays
+    Computes the divergence of the velocity field (div u = du/dx + dv/dy).
+    Supports 2D (ny, nx) or batched 3D (M, ny, nx) numpy arrays.
     """
-    du_dx = np.gradient(u, dx, axis=1)
-    dv_dy = np.gradient(v, dy, axis=0)
+    du_dx = np.gradient(u, dx, axis=-1)
+    dv_dy = np.gradient(v, dy, axis=-2)
     return np.abs(du_dx + dv_dy)
 
 def mean_continuity_residual(u, v, dx=1.0, dy=1.0):

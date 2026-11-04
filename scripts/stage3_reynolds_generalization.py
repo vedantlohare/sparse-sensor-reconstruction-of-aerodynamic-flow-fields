@@ -178,14 +178,23 @@ def run_reynolds_experiment(quick=False):
     patience = 3 if quick else 15
     seeds = [0] if quick else [0, 1, 2]
     
-    # 1. Load and prepare pooled training data
+    # 1. Load and prepare pooled training data (stratified chronological 70/15/15 split per Re case)
     print("\n--- Ingesting Training Cases (Re=100, 200, 300) ---")
     data_list_train = []
+    train_slices = []
+    val_slices = []
+    heldout_test_by_cid = {}
     X_grid, Y_grid, cylinder_mask = None, None, None
     for name, cid in train_cases.items():
         print(f"Loading {name} ({cid})...")
         d, X_grid, Y_grid, cylinder_mask = load_case_snapshots(raw_dir, cid, num_snapshots=num_snaps_train)
         data_list_train.append(d)
+        m_c = len(d)
+        m_c_tr = int(0.70 * m_c)
+        m_c_v = int(0.15 * m_c)
+        train_slices.append(d[:m_c_tr].copy())
+        val_slices.append(d[m_c_tr:m_c_tr + m_c_v].copy())
+        heldout_test_by_cid[cid] = d[m_c_tr + m_c_v:].copy()
         
     ring_mask = get_adjacent_ring_mask(cylinder_mask)
     ny, nx = X_grid.shape
@@ -193,16 +202,11 @@ def run_reynolds_experiment(quick=False):
     N = C * ny * nx
     N_spatial = ny * nx
     
-    # Concatenate pooled training data: shape (M_pool, C, ny, nx)
-    data_pool_raw = np.concatenate(data_list_train, axis=0)
-    M_total = data_pool_raw.shape[0]
-    
-    # Chronological partition on pooled data: 70% Train, 15% Val, 15% Test
-    M_tr = int(0.70 * M_total)
-    M_v = int(0.15 * M_total)
-    
-    data_tr = data_pool_raw[:M_tr].copy()
-    data_v = data_pool_raw[M_tr:M_tr+M_v].copy()
+    # Concatenate per-case chronological splits: shape (M_tr, C, ny, nx) and (M_v, C, ny, nx)
+    data_tr = np.concatenate(train_slices, axis=0)
+    data_v = np.concatenate(val_slices, axis=0)
+    M_tr = data_tr.shape[0]
+    M_v = data_v.shape[0]
     
     # Standardize based on pooled training statistics
     mu_pool = np.zeros(C)
@@ -292,9 +296,13 @@ def run_reynolds_experiment(quick=False):
     print("\n--- Evaluating Across Reynolds Regimes ---")
     for label, cid, re_val in eval_suite:
         print(f"\n================ Target {label} ================")
-        d_raw, _, _, _ = load_case_snapshots(raw_dir, cid, num_snapshots=num_snaps_test)
-        # Use last 50% as unseen test snapshots
-        test_slice = d_raw[int(0.50 * len(d_raw)):].copy()
+        if cid in heldout_test_by_cid:
+            # Strictly disjoint chronological last 15% test split for seen Re cases
+            test_slice = heldout_test_by_cid[cid].copy()
+        else:
+            d_raw, _, _, _ = load_case_snapshots(raw_dir, cid, num_snapshots=num_snaps_test)
+            # Use last 50% as unseen test snapshots
+            test_slice = d_raw[int(0.50 * len(d_raw)):].copy()
         for c in range(C):
             test_slice[:, c, :, :] = (test_slice[:, c, :, :] - mu_pool[c]) / sigma_pool[c]
         M_te = test_slice.shape[0]

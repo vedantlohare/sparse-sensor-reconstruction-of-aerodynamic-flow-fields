@@ -10,7 +10,7 @@ This document summarizes all experimental phases executed for the Stage 3 benchm
 - **Random Seed Ensemble:** 3 independent seeds (`0, 1, 2`) reporting mean ± std
 
 ### Phase 0: Test Sanity Suite & Dataset Inventory
-- **Pytest Verification:** 6/6 unit tests passing (`tests/test_sanity.py`) verifying POD energy conservation, Q-DEIM indexing uniqueness, Gappy reconstruction dimension matching, SensorMLP and DeepONet forward dimensions, and physics loss continuity/vorticity penalty correctness.
+- **Pytest Verification:** 8/8 unit tests passing (`tests/test_sanity.py`) verifying POD energy conservation, Q-DEIM indexing uniqueness, Gappy reconstruction dimension matching, SensorMLP/PODMLP/DeepONet forward dimensions, and 2D/3D batched vorticity & continuity spatial differentiation.
 - **Dataset Inventory:** 136 full Navier-Stokes DNS cases cataloged (`results/case_inventory.csv`) spanning $Re \in [4, 1000]$, confirming the physical laminar Karman vortex shedding regime ($Re \in [100, 400]$) utilized across experiments.
 
 ### Phase 1: Sensor Budget Scaling Sweep & Gappy POD Rank Investigation
@@ -34,12 +34,14 @@ This document summarizes all experimental phases executed for the Stage 3 benchm
 - **Noise-Augmented Training:** Reduces error at 10 dB to **4.25 ± 0.03%**, though it incurs a minor penalty under perfectly clean conditions (3.35% vs 3.12%).
 
 ### Phase 4: Reynolds Number Multi-Regime Generalization
-- **Training Pool:** Combined snapshots across $Re \in \{100, 200, 300\}$.
-- **In-Distribution ($Re = 100$):** Pooled Gappy POD = **0.60%** vs Pooled SensorMLP = 2.54% (Gappy POD is **4.23× better**).
-- **In-Distribution ($Re = 200$):** Pooled Gappy POD = **2.37%** vs Pooled SensorMLP = 2.78% (Gappy POD is **1.17× better**).
-- **Unseen Interpolation ($Re = 240$):** Pooled Gappy POD = **2.23%** vs Pooled SensorMLP = 3.44% (Gappy POD is **1.54× better**).
-- **Unseen Extrapolation ($Re = 400$):** Pooled SensorMLP = **6.21%** vs Pooled Gappy POD = 8.13% (SensorMLP is **1.31× better**).
-- **Physical Takeaway:** Linear modal interpolation across a multi-Reynolds library is remarkably accurate inside the convex hull ($Re \in [100, 300]$), outperforming neural networks. The non-linear inductive bias of SensorMLP proves advantageous strictly during out-of-distribution extrapolation ($Re=400$) where modal dynamics depart from the training subspace.
+- **Training Pool:** Combined snapshots across $Re \in \{100, 200, 300\}$ using a leak-free per-case chronological 70/15/15 split.
+- **In-Distribution ($Re = 100$):** Pooled SensorMLP = **2.74 ± 0.02%** vs Pooled Gappy POD = 3.29% (Single-$Re$ MLP = 27.70%; SensorMLP is **1.20× better**).
+- **In-Distribution ($Re = 200$):** Pooled SensorMLP = **3.89 ± 0.07%** vs Pooled Gappy POD = 6.59% (Single-$Re$ MLP = 5.90%; SensorMLP is **1.69× better**).
+- **Unseen Interpolation ($Re = 240$):** Pooled Gappy POD = **1.43%** vs Pooled SensorMLP = 2.97 ± 0.00% (Single-$Re$ MLP = 7.56%; Gappy POD is **2.08× better**).
+- **Unseen Interpolation ($Re = 260$):** Pooled Gappy POD = **1.19%** vs Pooled SensorMLP = 2.99 ± 0.00% (Single-$Re$ MLP = 10.00%; Gappy POD is **2.52× better**).
+- **In-Distribution ($Re = 300$):** Pooled Gappy POD = **3.67%** vs Pooled SensorMLP = 3.96 ± 0.04% (Single-$Re$ MLP = 14.72%; Gappy POD is **1.08× better**).
+- **Unseen Extrapolation ($Re = 400$):** Pooled SensorMLP = **4.62 ± 0.14%** vs Pooled Gappy POD = 4.75% (Single-$Re$ MLP = 20.65%; SensorMLP is **1.03× better**).
+- **Physical Takeaway:** Both Pooled Gappy POD and Pooled SensorMLP dramatically outperform the Single-$Re$ ($Re=200$) baseline across parameter shifts. Linear modal projection excels on smooth intermediate interpolation regimes ($Re=240, 260, 300$), while Pooled SensorMLP achieves lower error at $Re=100, 200$ and under out-of-distribution extrapolation ($Re=400$).
 
 ### Phase 5: Deep Learning & Operator Network Architectural Benchmark
 - **Gappy POD (Linear ROM):** Rel $L_2 = 15.38\%$, Vorticity = 20.94%, Latency = 0.18 ms, Parameters = 0 (Analytic).

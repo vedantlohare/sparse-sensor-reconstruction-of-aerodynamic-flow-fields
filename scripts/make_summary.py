@@ -34,7 +34,7 @@ def generate_summary():
     
     # Phase 0
     lines.append("### Phase 0: Test Sanity Suite & Dataset Inventory")
-    lines.append("- **Pytest Verification:** 6/6 unit tests passing (`tests/test_sanity.py`) verifying POD energy conservation, Q-DEIM indexing uniqueness, Gappy reconstruction dimension matching, SensorMLP and DeepONet forward dimensions, and physics loss continuity/vorticity penalty correctness.")
+    lines.append("- **Pytest Verification:** 8/8 unit tests passing (`tests/test_sanity.py`) verifying POD energy conservation, Q-DEIM indexing uniqueness, Gappy reconstruction dimension matching, SensorMLP/PODMLP/DeepONet forward dimensions, and 2D/3D batched vorticity & continuity spatial differentiation.")
     lines.append("- **Dataset Inventory:** 136 full Navier-Stokes DNS cases cataloged (`results/case_inventory.csv`) spanning $Re \\in [4, 1000]$, confirming the physical laminar Karman vortex shedding regime ($Re \\in [100, 400]$) utilized across experiments.\n")
     
     # Phase 1
@@ -71,12 +71,17 @@ def generate_summary():
     # Phase 4
     rey = p4['results']
     lines.append("### Phase 4: Reynolds Number Multi-Regime Generalization")
-    lines.append("- **Training Pool:** Combined snapshots across $Re \\in \\{100, 200, 300\\}$.")
-    lines.append(f"- **In-Distribution ($Re = 100$):** Pooled Gappy POD = **{rey['100']['gappy_pod']['rel_l2_pct']:.2f}%** vs Pooled SensorMLP = {rey['100']['pooled_mlp_mean']['rel_l2_pct']:.2f}% (Gappy POD is **{rey['100']['pooled_mlp_mean']['rel_l2_pct'] / rey['100']['gappy_pod']['rel_l2_pct']:.2f}× better**).")
-    lines.append(f"- **In-Distribution ($Re = 200$):** Pooled Gappy POD = **{rey['200']['gappy_pod']['rel_l2_pct']:.2f}%** vs Pooled SensorMLP = {rey['200']['pooled_mlp_mean']['rel_l2_pct']:.2f}% (Gappy POD is **{rey['200']['pooled_mlp_mean']['rel_l2_pct'] / rey['200']['gappy_pod']['rel_l2_pct']:.2f}× better**).")
-    lines.append(f"- **Unseen Interpolation ($Re = 240$):** Pooled Gappy POD = **{rey['240']['gappy_pod']['rel_l2_pct']:.2f}%** vs Pooled SensorMLP = {rey['240']['pooled_mlp_mean']['rel_l2_pct']:.2f}% (Gappy POD is **{rey['240']['pooled_mlp_mean']['rel_l2_pct'] / rey['240']['gappy_pod']['rel_l2_pct']:.2f}× better**).")
-    lines.append(f"- **Unseen Extrapolation ($Re = 400$):** Pooled SensorMLP = **{rey['400']['pooled_mlp_mean']['rel_l2_pct']:.2f}%** vs Pooled Gappy POD = {rey['400']['gappy_pod']['rel_l2_pct']:.2f}% (SensorMLP is **{rey['400']['gappy_pod']['rel_l2_pct'] / rey['400']['pooled_mlp_mean']['rel_l2_pct']:.2f}× better**).")
-    lines.append("- **Physical Takeaway:** Linear modal interpolation across a multi-Reynolds library is remarkably accurate inside the convex hull ($Re \\in [100, 300]$), outperforming neural networks. The non-linear inductive bias of SensorMLP proves advantageous strictly during out-of-distribution extrapolation ($Re=400$) where modal dynamics depart from the training subspace.\n")
+    lines.append("- **Training Pool:** Combined snapshots across $Re \\in \\{100, 200, 300\\}$ using a leak-free per-case chronological 70/15/15 split.")
+    for k, label_str in [('100', 'In-Distribution ($Re = 100$)'), ('200', 'In-Distribution ($Re = 200$)'), ('240', 'Unseen Interpolation ($Re = 240$)'), ('260', 'Unseen Interpolation ($Re = 260$)'), ('300', 'In-Distribution ($Re = 300$)'), ('400', 'Unseen Extrapolation ($Re = 400$)')]:
+        g_l2 = rey[k]['gappy_pod']['rel_l2_pct']
+        m_l2 = rey[k]['pooled_mlp_mean']['rel_l2_pct']
+        m_std = rey[k]['pooled_mlp_std']['rel_l2_pct']
+        s_l2 = rey[k]['single_re200_mlp']['rel_l2_pct']
+        if g_l2 < m_l2:
+            lines.append(f"- **{label_str}:** Pooled Gappy POD = **{g_l2:.2f}%** vs Pooled SensorMLP = {m_l2:.2f} ± {m_std:.2f}% (Single-$Re$ MLP = {s_l2:.2f}%; Gappy POD is **{m_l2 / g_l2:.2f}× better**).")
+        else:
+            lines.append(f"- **{label_str}:** Pooled SensorMLP = **{m_l2:.2f} ± {m_std:.2f}%** vs Pooled Gappy POD = {g_l2:.2f}% (Single-$Re$ MLP = {s_l2:.2f}%; SensorMLP is **{g_l2 / m_l2:.2f}× better**).")
+    lines.append("- **Physical Takeaway:** Both Pooled Gappy POD and Pooled SensorMLP dramatically outperform the Single-$Re$ ($Re=200$) baseline across parameter shifts. Linear modal projection excels on smooth intermediate interpolation regimes ($Re=240, 260, 300$), while Pooled SensorMLP achieves lower error at $Re=100, 200$ and under out-of-distribution extrapolation ($Re=400$).\n")
     
     # Phase 5
     m_p5 = p5['models']

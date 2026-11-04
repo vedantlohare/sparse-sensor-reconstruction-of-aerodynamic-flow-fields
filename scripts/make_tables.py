@@ -99,8 +99,11 @@ def generate_tables():
         p_val = row['p']
         dims = row['meas_dims'] # accurately 3*p
         cov = f"{row['spatial_coverage_pct']:.3f}%"
+        cov_tex = f"{row['spatial_coverage_pct']:.3f}\\%"
         g_fix_l2 = f"{row['gappy_fixed_1e3']['rel_l2_pct']:.2f}%"
+        g_fix_tex = f"{row['gappy_fixed_1e3']['rel_l2_pct']:.2f}\\%"
         g_tune_l2 = f"{row['gappy_tuned']['metrics']['rel_l2_pct']:.2f}%"
+        g_tune_tex = f"{row['gappy_tuned']['metrics']['rel_l2_pct']:.2f}\\%"
         
         mlp_m_l2 = row['sensor_mlp_mean']['rel_l2_pct']
         mlp_s_l2 = row['sensor_mlp_std']['rel_l2_pct']
@@ -110,7 +113,7 @@ def generate_tables():
         ratio_str = f"{ratio:.2f}×"
         
         md_lines.append(f"| {p_val} | {dims} | {cov} | {g_fix_l2} | {g_tune_l2} | **{mlp_str}** | **{ratio_str}** |")
-        tex_lines.append(f"{p_val} & {dims} & {cov} & {g_fix_l2} & {g_tune_l2} & \\textbf{{{mlp_m_l2:.2f} $\\pm$ {mlp_s_l2:.2f}\\%}} & \\textbf{{{ratio:.2f}$\\times$}} \\\\")
+        tex_lines.append(f"{p_val} & {dims} & {cov_tex} & {g_fix_tex} & {g_tune_tex} & \\textbf{{{mlp_m_l2:.2f} $\\pm$ {mlp_s_l2:.2f}\\%}} & \\textbf{{{ratio:.2f}$\\times$}} \\\\")
         
     tex_lines.append("\\bottomrule")
     tex_lines.append("\\end{tabular}")
@@ -142,6 +145,7 @@ def generate_tables():
             if p_str in rank_data:
                 p_ranks = rank_data[p_str]
                 mlp_ref = "3.12 ± 0.01%" if p_str == '16' else "3.13 ± 0.01%"
+                mlp_ref_tex = "3.12 $\\pm$ 0.01\\%" if p_str == '16' else "3.13 $\\pm$ 0.01\\%"
                 for r_str in sorted(p_ranks.keys(), key=lambda x: int(x)):
                     row = p_ranks[r_str]
                     r_val = row['r']
@@ -156,7 +160,7 @@ def generate_tables():
                     gap_tex = f"\\textbf{{{gap_l2:.2f}\\%}}" if is_best else f"{gap_l2:.2f}\\%"
                     
                     md_lines.append(f"| {p_str} | {r_val} | {e_pct:.2f}% | {tr_fl:.2f}% | {gap_fmt} | {cond:.1f} | {t_lam} | {mlp_ref} |")
-                    tex_lines.append(f"{p_str} & {r_val} & {e_pct:.2f}\\% & {tr_fl:.2f}\\% & {gap_tex} & {cond:.1f} & {t_lam} & {mlp_ref} \\\\")
+                    tex_lines.append(f"{p_str} & {r_val} & {e_pct:.2f}\\% & {tr_fl:.2f}\\% & {gap_tex} & {cond:.1f} & {t_lam} & {mlp_ref_tex} \\\\")
                 if p_str == '16':
                     tex_lines.append("\\midrule")
                     
@@ -190,11 +194,12 @@ def generate_tables():
             p_res = topo_data[p_key]
             # Uniform
             u_g = f"{p_res['uniform']['gappy_pod']['rel_l2_pct']:.2f}%"
+            u_g_tex = f"{p_res['uniform']['gappy_pod']['rel_l2_pct']:.2f}\\%"
             u_m_m = p_res['uniform']['sensor_mlp_mean']['rel_l2_pct']
             u_m_s = p_res['uniform']['sensor_mlp_std']['rel_l2_pct']
             u_m = f"{u_m_m:.2f} ± {u_m_s:.2f}%"
             md_lines.append(f"| {p_key} | Uniform Grid | {u_g} | {u_m} |")
-            tex_lines.append(f"{p_key} & Uniform Grid & {u_g} & {u_m_m:.2f} $\\pm$ {u_m_s:.2f}\\% \\\\")
+            tex_lines.append(f"{p_key} & Uniform Grid & {u_g_tex} & {u_m_m:.2f} $\\pm$ {u_m_s:.2f}\\% \\\\")
             
             # Random
             r_g_m = p_res['random']['gappy_pod_mean']['rel_l2_pct']
@@ -208,11 +213,12 @@ def generate_tables():
             
             # Q-DEIM
             q_g = f"{p_res['qdeim']['gappy_pod']['rel_l2_pct']:.2f}%"
+            q_g_tex = f"{p_res['qdeim']['gappy_pod']['rel_l2_pct']:.2f}\\%"
             q_m_m = p_res['qdeim']['sensor_mlp_mean']['rel_l2_pct']
             q_m_s = p_res['qdeim']['sensor_mlp_std']['rel_l2_pct']
             q_m = f"**{q_m_m:.2f} ± {q_m_s:.2f}%**"
             md_lines.append(f"| {p_key} | **Q-DEIM (Tailored)** | **{q_g}** | {q_m} |")
-            tex_lines.append(f"{p_key} & \\textbf{{Q-DEIM (Tailored)}} & \\textbf{{{q_g}}} & \\textbf{{{q_m_m:.2f} $\\pm$ {q_m_s:.2f}\\%}} \\\\")
+            tex_lines.append(f"{p_key} & \\textbf{{Q-DEIM (Tailored)}} & \\textbf{{{q_g_tex}}} & \\textbf{{{q_m_m:.2f} $\\pm$ {q_m_s:.2f}\\%}} \\\\")
             if p_key != sorted(topo_data.keys(), key=lambda x: int(x))[-1]:
                 tex_lines.append("\\midrule")
                 
@@ -251,15 +257,28 @@ def generate_tables():
             snr_tex = r"$\infty$ (Clean)" if k == 'inf' else f"{row['snr_db']:.0f} dB"
             lam_disp = f"{row['gappy_tuned_lambda']:.1e}"
             gappy_val = f"{row['gappy_rel_l2_pct']:.2f}%"
-            clean_m = f"{row['clean_mlp_rel_l2_mean']:.2f} ± {row['clean_mlp_rel_l2_std']:.2f}%"
-            clean_tex = f"{row['clean_mlp_rel_l2_mean']:.2f} $\\pm$ {row['clean_mlp_rel_l2_std']:.2f}\\%"
-            aug_m = f"**{row['augmented_mlp_rel_l2_mean']:.2f} ± {row['augmented_mlp_rel_l2_std']:.2f}%**"
-            aug_tex = f"\\textbf{{{row['augmented_mlp_rel_l2_mean']:.2f} $\\pm$ {row['augmented_mlp_rel_l2_std']:.2f}\\%}}"
+            gappy_tex = f"{row['gappy_rel_l2_pct']:.2f}\\%"
+            c_mean = row['clean_mlp_rel_l2_mean']
+            c_std = row['clean_mlp_rel_l2_std']
+            a_mean = row['augmented_mlp_rel_l2_mean']
+            a_std = row['augmented_mlp_rel_l2_std']
+
+            if c_mean <= a_mean:
+                clean_m = f"**{c_mean:.2f} ± {c_std:.2f}%**"
+                clean_tex = f"\\textbf{{{c_mean:.2f} $\\pm$ {c_std:.2f}\\%}}"
+                aug_m = f"{a_mean:.2f} ± {a_std:.2f}%"
+                aug_tex = f"{a_mean:.2f} $\\pm$ {a_std:.2f}\\%"
+            else:
+                clean_m = f"{c_mean:.2f} ± {c_std:.2f}%"
+                clean_tex = f"{c_mean:.2f} $\\pm$ {c_std:.2f}\\%"
+                aug_m = f"**{a_mean:.2f} ± {a_std:.2f}%**"
+                aug_tex = f"\\textbf{{{a_mean:.2f} $\\pm$ {a_std:.2f}\\%}}"
             
             note = "Baseline" if k == 'inf' else ("Stable" if k in ['40dB', '30dB'] else ("MLP sensitive" if k == '20dB' else "Tikhonov dampens noise (+0.73%), MLP degrades 2x"))
+            note_tex = note.replace("%", "\\%")
             
             md_lines.append(f"| {snr_disp} | {lam_disp} | {gappy_val} | {clean_m} | {aug_m} | {note} |")
-            tex_lines.append(f"{snr_tex} & {lam_disp} & {gappy_val} & {clean_tex} & {aug_tex} & {note} \\\\")
+            tex_lines.append(f"{snr_tex} & {lam_disp} & {gappy_tex} & {clean_tex} & {aug_tex} & {note_tex} \\\\")
             
         tex_lines.append("\\bottomrule")
         tex_lines.append("\\end{tabular}")

@@ -151,8 +151,8 @@ def plot_topology_comparison(X_grid, Y_grid, cylinder_mask, mean_u,
         # Background mean streamwise velocity contour
         cf = ax.contourf(X_grid, Y_grid, mean_u, levels=40, cmap='coolwarm', alpha=0.85)
         
-        # Solid cylinder patch
-        cyl_patch = patches.Circle((0.0, 0.0), 0.01, facecolor='dimgray', edgecolor='black', linewidth=1.5, zorder=5)
+        # Solid cylinder patch (dimensionless grid [0, 10] x [-3, 3], center (2.0, 0.0), radius 0.5)
+        cyl_patch = patches.Circle((2.0, 0.0), 0.5, facecolor='dimgray', edgecolor='black', linewidth=1.5, zorder=5)
         ax.add_patch(cyl_patch)
         
         # Overlay sensors
@@ -161,11 +161,11 @@ def plot_topology_comparison(X_grid, Y_grid, cylinder_mask, mean_u,
         ax.scatter(sx, sy, c='yellow', edgecolors='black', s=60, linewidths=1.2, zorder=10, label='Sensors')
         
         ax.set_title(title, fontsize=12, fontweight='bold', pad=8)
-        ax.set_xlabel("x [m]", fontsize=10)
+        ax.set_xlabel("x/D", fontsize=10)
         ax.set_aspect('equal')
         ax.grid(True, linestyle=':', alpha=0.4)
         
-    axes[0].set_ylabel("y [m]", fontsize=10)
+    axes[0].set_ylabel("y/D", fontsize=10)
     fig.subplots_adjust(right=0.88, wspace=0.15)
     cbar_ax = fig.add_axes([0.90, 0.20, 0.015, 0.60])
     cbar = fig.colorbar(cf, cax=cbar_ax)

@@ -40,14 +40,14 @@ def run_rank_sweep():
     # Compute full SVD up to 50 modes
     Phi, S, _, cum_energy = compute_pod(X_train_fluct, energy_threshold=0.9999)
     
-    ranks = [6, 10, 20, 40]
+    ranks = [5, 6, 10, 20, 40]
     p_values = [16, 32]
-    lambdas = [0.0, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2]
+    lambdas = [0.0, 1e-8, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2]
     
     sweep_results = {}
     
     print("\n" + "="*80)
-    print("STAGE 3: GAPPY POD MODAL RANK SWEEP (r in [6, 10, 20, 40] at p in [16, 32])")
+    print("STAGE 3: GAPPY POD MODAL RANK SWEEP (r in [5, 6, 10, 20, 40] at p in [16, 32])")
     print("="*80)
     
     for p in p_values:

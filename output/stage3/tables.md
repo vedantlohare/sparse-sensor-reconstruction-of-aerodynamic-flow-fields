@@ -25,10 +25,12 @@
 
 | Sensors ($p$) | Modal Rank ($r$) | Energy (%) | Truncation Floor (%) | Gappy POD Rel $L_2$ (%) | Condition $\kappa(\mathbf{\Theta})$ | Tuned $\lambda$ | SensorMLP Rel $L_2$ (%) |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 16 | 5 | 95.82% | 13.62% | 15.38% | 1.7 | 1e-05 | 3.12 ± 0.01% |
 | 16 | 6 | 96.72% | 12.65% | 14.43% | 2.1 | 0 | 3.12 ± 0.01% |
 | 16 | 10 | 98.61% | 8.01% | 10.94% | 2.6 | 0 | 3.12 ± 0.01% |
 | 16 | 20 | 99.71% | 3.80% | 8.72% | 11.0 | 0 | 3.12 ± 0.01% |
 | 16 | 40 | 99.97% | 1.45% | 10.14% | 271.5 | 1e-06 | 3.12 ± 0.01% |
+| 32 | 5 | 95.82% | 13.62% | 14.60% | 1.7 | 1e-04 | 3.13 ± 0.01% |
 | 32 | 6 | 96.72% | 12.65% | 13.77% | 1.9 | 0 | 3.13 ± 0.01% |
 | 32 | 10 | 98.61% | 8.01% | 9.78% | 2.4 | 0 | 3.13 ± 0.01% |
 | 32 | 20 | 99.71% | 3.80% | 5.23% | 4.3 | 0 | 3.13 ± 0.01% |
@@ -52,9 +54,9 @@
 
 | SNR (dB) | Gappy POD Tuned $\lambda$ | Gappy POD Rel $L_2$ (%) | Clean-Trained SensorMLP Rel $L_2$ (%) | Noise-Augmented SensorMLP Rel $L_2$ (%) | Observation / Dynamics |
 |:---:|:---:|:---:|:---:|:---:|:---|
-| $\infty$ (Clean) | 1.0e-05 | 15.38% | 3.12 ± 0.01% | **3.35 ± 0.02%** | Baseline |
-| 40dB | 1.0e-05 | 15.38% | 3.12 ± 0.01% | **3.35 ± 0.02%** | Stable |
-| 30dB | 1.0e-05 | 15.39% | 3.16 ± 0.01% | **3.36 ± 0.02%** | Stable |
+| $\infty$ (Clean) | 1.0e-05 | 15.38% | **3.12 ± 0.01%** | 3.35 ± 0.02% | Baseline |
+| 40dB | 1.0e-05 | 15.38% | **3.12 ± 0.01%** | 3.35 ± 0.02% | Stable |
+| 30dB | 1.0e-05 | 15.39% | **3.16 ± 0.01%** | 3.36 ± 0.02% | Stable |
 | 20dB | 1.0e-04 | 15.48% | 3.53 ± 0.02% | **3.46 ± 0.02%** | MLP sensitive |
 | 10dB | 1.0e-04 | 16.11% | 6.00 ± 0.10% | **4.25 ± 0.03%** | Tikhonov dampens noise (+0.73%), MLP degrades 2x |
 
@@ -62,12 +64,12 @@
 
 | Target Regime | Reynolds ($Re$) | Pooled Gappy POD Rel $L_2$ (%) | Pooled SensorMLP Rel $L_2$ (%) | Generalization Comparison | Single-$Re$ ($Re=200$) MLP (%) |
 |:---|:---:|:---:|:---:|:---:|:---:|
-| Train | 100 | **0.60%** | 2.54 ± 0.00% | Gappy POD (4.23× better) | 29.17% |
-| Train | 200 | **2.37%** | 2.78 ± 0.00% | Gappy POD (1.17× better) | 2.96% |
-| Interpolation | 240 | **2.23%** | 3.44 ± 0.06% | Gappy POD (1.54× better) | 7.34% |
-| Interpolation | 260 | **2.55%** | 3.94 ± 0.10% | Gappy POD (1.54× better) | 9.77% |
-| Train | 300 | **3.92%** | 4.81 ± 0.14% | Gappy POD (1.23× better) | 13.87% |
-| Extrapolation | 400 | 8.13% | **6.21 ± 0.00%** | **SensorMLP (1.31× better)** | 20.87% |
+| Train | 100 | 3.29% | **2.74 ± 0.02%** | **SensorMLP (1.20× better)** | 27.70% |
+| Train | 200 | 6.59% | **3.89 ± 0.07%** | **SensorMLP (1.69× better)** | 5.90% |
+| Interpolation | 240 | **1.43%** | 2.97 ± 0.00% | Gappy POD (2.08× better) | 7.56% |
+| Interpolation | 260 | **1.19%** | 2.99 ± 0.00% | Gappy POD (2.52× better) | 10.00% |
+| Train | 300 | **3.67%** | 3.96 ± 0.04% | Gappy POD (1.08× better) | 14.72% |
+| Extrapolation | 400 | 4.75% | **4.62 ± 0.14%** | **SensorMLP (1.03× better)** | 20.65% |
 
 ## Table 6: Comprehensive Model Comparison ($p = 16$ Q-DEIM Sensors)
 
@@ -83,7 +85,7 @@
 | Model Architecture | Rel $L_2$ Error (%) | Vorticity Error $\epsilon_\omega$ (%) | Continuity Residual $\mathcal{R}_{cont}$ | Latency (ms) | Generalization Status |
 |:---|:---:|:---:|:---:|:---:|:---|
 | Mean-Flow Baseline ($p=0$) | 62.91% | — | — | < 0.1 ms | Reference Baseline |
-| **Gappy POD (Linear ROM)** | **45.19%** | 140.18% | 289.12 | 0.10 ms | **Sole model beating baseline (-17.7%)** |
-| PODMLP (Latent SciML) | 62.90% | 99.86% | 52.43 | ~0.40 ms | Matches baseline |
-| DeepONet (Operator Net) | 68.56% | 219.93% | 85.16 | ~1.20 ms | Fails baseline (+5.7% error) |
-| SensorMLP (Direct SciML) | 81.79% | 99.42% | 56.00 | 0.73 ms | Fails baseline (+18.9% error) |
+| **Gappy POD (Linear ROM)** | **45.19%** | 98.09% | 11.43 | 0.25 ms | **Sole model beating baseline (-17.7%)** |
+| PODMLP (Latent SciML) | 62.90% | 83.88% | 3.48 | ~0.40 ms | Matches baseline |
+| DeepONet (Operator Net) | 68.56% | 91.77% | 7.78 | ~1.20 ms | Fails baseline (+5.7% error) |
+| SensorMLP (Direct SciML) | 81.79% | 84.76% | 5.27 | 1.18 ms | Fails baseline (+18.9% error) |
